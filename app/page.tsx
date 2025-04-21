@@ -71,11 +71,17 @@ export default function Home() {
 
     return (
         <div className="flex flex-col items-center gap-8 p-4">
-            <h1 className="text-xl font-semibold">Plot A (CD45-KrO vs SS INT LIN)</h1>
-            <svg ref={svgARef} width={400} height={400} className="border" />
-
-            <h1 className="text-xl font-semibold">Plot B (CD19-PB vs SS INT LIN)</h1>
-            <svg ref={svgBRef} width={400} height={400} className="border" />
+            <h1 className="mb-2 text-xl font-semibold">Plot A & Plot B</h1>
+            <div className="flex gap-8">
+                <div className="flex flex-col items-center">
+                    <span className="mb-1 text-sm font-medium">Plot A (CD45-KrO vs SS INT LIN)</span>
+                    <svg ref={svgARef} width={400} height={400} className="border" />
+                </div>
+                <div className="flex flex-col items-center">
+                    <span className="mb-1 text-sm font-medium">Plot B (CD19-PB vs SS INT LIN)</span>
+                    <svg ref={svgBRef} width={400} height={400} className="border" />
+                </div>
+            </div>
         </div>
     )
 }
