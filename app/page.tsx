@@ -46,22 +46,23 @@ export default function Home() {
         svgB.selectAll("*").remove()
 
         // 設定三個比例尺，用於數據映射：
+        // 加了 20 的間距來避免原點太過壓迫圖形邊緣，看起來會更自然
         // 1. CD45-KrO 的 X 軸比例尺
         const xScaleA = d3
             .scaleLinear()
-            .domain([200, 1000]) // 原始數據範圍：200 到 1000
+            .domain([180, 1000]) // 原始數據範圍：180 到 1000
             .range([0, innerWidth]) // 映射到畫布範圍：0 到 330
 
         // 2. CD19-PB 的 X 軸比例尺
         const xScaleB = d3
             .scaleLinear()
-            .domain([0, 1000]) // 原始數據範圍：0 到 1000
+            .domain([-20, 1000]) // 原始數據範圍：-20 到 1000
             .range([0, innerWidth]) // 映射到畫布範圍：0 到 330
 
         // 3. SS INT LIN 的 Y 軸比例尺（注意這裡的範圍是反轉的）
         const yScale = d3
             .scaleLinear()
-            .domain([0, 1000]) // 原始數據範圍：0 到 1000
+            .domain([-20, 1000]) // 原始數據範圍：-20 到 1000
             .range([innerHeight, 0]) // 映射到畫布範圍：320 到 0（反轉是為了正確顯示 Y 軸方向）
 
         // 定義繪製圖表的函數，接收以下參數：
