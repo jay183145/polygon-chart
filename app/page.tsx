@@ -34,40 +34,104 @@ export default function Home() {
         const width = 400
         const height = 400
 
+        const margin = { top: 40, right: 20, bottom: 40, left: 50 }
+        // 計算實際可繪圖區域的大小
+        const innerWidth = width - margin.left - margin.right
+        const innerHeight = height - margin.top - margin.bottom
+
         // 選取兩個 SVG 元素並清除其內容
         const svgA = d3.select(svgARef.current)
         const svgB = d3.select(svgBRef.current)
         svgA.selectAll("*").remove()
         svgB.selectAll("*").remove()
 
-        // 設定比例尺（Scale）
-        // xScaleA：將 CD45-KrO 的數值（200-1000）映射到畫布寬度（0-400）
-        const xScaleA = d3.scaleLinear().domain([200, 1000]).range([0, width])
-        // xScaleB：將 CD19-PB 的數值（0-1000）映射到畫布寬度（0-400）
-        const xScaleB = d3.scaleLinear().domain([0, 1000]).range([0, width])
-        // yScale：將 SS INT LIN 的數值（0-1000）映射到畫布高度（400-0，注意是反轉的）
-        const yScale = d3.scaleLinear().domain([0, 1000]).range([height, 0])
+        // 設定三個比例尺，用於數據映射：
+        // 1. CD45-KrO 的 X 軸比例尺
+        const xScaleA = d3
+            .scaleLinear()
+            .domain([200, 1000]) // 原始數據範圍：200 到 1000
+            .range([0, innerWidth]) // 映射到畫布範圍：0 到 330
 
-        // 繪製第一個散點圖（Plot A）
-        svgA.selectAll("circle") // 選擇所有圓點（雖然一開始沒有）
-            .data(points) // 綁定數據
-            .enter() // 為新數據創建元素
-            .append("circle") // 添加圓形
-            .attr("cx", (d) => xScaleA(d.a[0])) // 設定 x 座標
-            .attr("cy", (d) => yScale(d.a[1])) // 設定 y 座標
-            .attr("r", 3) // 設定圓的半徑
-            .attr("fill", "gray") // 設定填充顏色
+        // 2. CD19-PB 的 X 軸比例尺
+        const xScaleB = d3
+            .scaleLinear()
+            .domain([0, 1000]) // 原始數據範圍：0 到 1000
+            .range([0, innerWidth]) // 映射到畫布範圍：0 到 330
 
-        // 繪製第二個散點圖（Plot B），邏輯同上
-        svgB.selectAll("circle")
-            .data(points)
-            .enter()
-            .append("circle")
-            .attr("cx", (d) => xScaleB(d.b[0]))
-            .attr("cy", (d) => yScale(d.b[1]))
-            .attr("r", 3)
-            .attr("fill", "gray")
-    }, [points]) // 當 points 數據變化時重新執行
+        // 3. SS INT LIN 的 Y 軸比例尺（注意這裡的範圍是反轉的）
+        const yScale = d3
+            .scaleLinear()
+            .domain([0, 1000]) // 原始數據範圍：0 到 1000
+            .range([innerHeight, 0]) // 映射到畫布範圍：320 到 0（反轉是為了正確顯示 Y 軸方向）
+
+        // 定義繪製圖表的函數，接收以下參數：
+        // - svgRef: SVG 元素的參考
+        // - xScale: X 軸的比例尺
+        // - labelX: X 軸的標籤文字
+        // - labelY: Y 軸的標籤文字
+        // - accessor: 用於獲取數據點座標的函數
+        function drawPlot(
+            svgRef: React.RefObject<SVGSVGElement | null>,
+            xScale: d3.ScaleLinear<number, number>,
+            labelX: string,
+            labelY: string,
+            accessor: (d: { a: [number, number]; b: [number, number] }) => [number, number],
+        ) {
+            // 選取 SVG 元素並清空其內容
+            const svg = d3.select(svgRef.current)
+            svg.selectAll("*").remove()
+
+            // 創建一個新的 g 元素作為主要繪圖區域，並設定位移以留出邊距空間
+            const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`)
+
+            // 創建座標軸
+            // 設定 X 軸，使用 6 個刻度
+            const xAxis = d3.axisBottom(xScale).ticks(6)
+            // 設定 Y 軸，使用 6 個刻度
+            const yAxis = d3.axisLeft(yScale).ticks(6)
+
+            // 繪製 X 軸，位置在底部
+            g.append("g").attr("transform", `translate(0,${innerHeight})`).call(xAxis)
+            // 繪製 Y 軸
+            g.append("g").call(yAxis)
+
+            // 添加 X 軸標籤
+            svg.append("text")
+                .attr("x", width / 2) // 放在寬度中間
+                .attr("y", height - 5) // 放在底部
+                .attr("text-anchor", "middle") // 文字置中對齊
+                .attr("font-size", 12)
+                .text(labelX)
+
+            // 添加 Y 軸標籤
+            svg.append("text")
+                .attr("transform", `rotate(-90)`) // 旋轉 90 度
+                .attr("x", -height / 2) // 放在高度中間
+                .attr("y", 15) // 距離左邊 15 像素
+                .attr("text-anchor", "middle") // 文字置中對齊
+                .attr("font-size", 12)
+                .text(labelY)
+
+            // 繪製數據點
+            g.selectAll("circle") // 選擇所有圓點（雖然一開始沒有）
+                .data(points) // 綁定數據
+                .enter() // 為新數據創建元素
+                .append("circle") // 添加圓形
+                .attr("cx", (d) => xScale(accessor(d)[0])) // 設定 X 座標
+                .attr("cy", (d) => yScale(accessor(d)[1])) // 設定 Y 座標
+                .attr("r", 1) // 設定圓的半徑
+                .attr("fill", "gray") // 設定填充顏色
+        }
+
+        // 如果 SVG A 存在，繪製第一個圖表（CD45-KrO vs SS INT LIN）
+        if (svgARef.current) {
+            drawPlot(svgARef, xScaleA, "CD45-KrO", "SS INT LIN", (d) => d.a)
+        }
+        // 如果 SVG B 存在，繪製第二個圖表（CD19-PB vs SS INT LIN）
+        if (svgBRef.current) {
+            drawPlot(svgBRef, xScaleB, "CD19-PB", "SS INT LIN", (d) => d.b)
+        }
+    }, [points])
 
     return (
         <div className="flex flex-col items-center gap-8 p-4">
