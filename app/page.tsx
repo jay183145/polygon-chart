@@ -1,14 +1,18 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useCallback } from "react"
 import * as d3 from "d3"
+import { Button } from "@/components/ui/button"
 
 export default function Home() {
     const svgARef = useRef<SVGSVGElement | null>(null)
     const svgBRef = useRef<SVGSVGElement | null>(null)
     const [points, setPoints] = useState<{ a: [number, number]; b: [number, number] }[]>([])
     const [clickedPoint, setClickedPoint] = useState<{ x: number; y: number; plot: "A" | "B" } | null>(null)
+    const [polygonPoints, setPolygonPoints] = useState<{ x: number; y: number; plot: "A" | "B" }[]>([])
+    const [isDrawingPolygon, setIsDrawingPolygon] = useState(false)
 
+    // 初始化數據
     useEffect(() => {
         d3.csv("/CD45_pos.csv", (d) => {
             // 從 CSV 中讀取三個數值並轉換為浮點數
@@ -30,6 +34,7 @@ export default function Home() {
         })
     }, [])
 
+    // 初始化圖表
     useEffect(() => {
         // 設定圖表的寬度和高度
         const width = 400
@@ -133,26 +138,113 @@ export default function Home() {
         if (svgBRef.current) {
             drawPlot(svgBRef, xScaleB, "CD19-PB", "SS INT LIN", (d) => d.b)
         }
+    }, [points])
 
-        // 處理點擊事件的函數
-        const handleClick = (e: MouseEvent, plot: "A" | "B") => {
+    // 繪製多邊形
+    useEffect(() => {
+        if (!polygonPoints.length) return
+
+        const width = 400
+        const height = 400
+        const margin = { top: 40, right: 20, bottom: 40, left: 50 }
+        const innerWidth = width - margin.left - margin.right
+        const innerHeight = height - margin.top - margin.bottom
+
+        const xScaleA = d3.scaleLinear().domain([180, 1000]).range([0, innerWidth])
+        const xScaleB = d3.scaleLinear().domain([-20, 1000]).range([0, innerWidth])
+        const yScale = d3.scaleLinear().domain([-20, 1000]).range([innerHeight, 0])
+
+        function drawPolygon(svgRef: React.RefObject<SVGSVGElement | null>, plot: "A" | "B") {
+            const svg = d3.select(svgRef.current)
+            const g = svg.select("g")
+
+            // 清除之前的多邊形
+            g.selectAll(".polygon-point").remove()
+            g.selectAll(".polygon-line").remove()
+
+            const pointsForThisPlot = polygonPoints.filter((p) => p.plot === plot)
+            if (!pointsForThisPlot.length) return
+
+            const xScale = plot === "A" ? xScaleA : xScaleB
+
+            // 繪製點
+            g.selectAll(".polygon-point")
+                .data(pointsForThisPlot)
+                .enter()
+                .append("circle")
+                .attr("class", "polygon-point")
+                .attr("cx", (d) => xScale(d.x))
+                .attr("cy", (d) => yScale(d.y))
+                .attr("r", 4)
+                .attr("fill", "red")
+
+            // 繪製線
+            if (pointsForThisPlot.length > 1) {
+                const line = d3
+                    .line<{ x: number; y: number }>()
+                    .x((d) => xScale(d.x))
+                    .y((d) => yScale(d.y))
+
+                g.append("path")
+                    .attr("class", "polygon-line")
+                    .datum(pointsForThisPlot)
+                    .attr("fill", "none")
+                    .attr("stroke", "red")
+                    .attr("stroke-width", 2)
+                    .attr("d", line)
+            }
+        }
+
+        if (svgARef.current) {
+            drawPolygon(svgARef, "A")
+        }
+        if (svgBRef.current) {
+            drawPolygon(svgBRef, "B")
+        }
+    }, [polygonPoints])
+
+    const handleClick = useCallback(
+        (e: MouseEvent, plot: "A" | "B") => {
+            const svg = plot === "A" ? svgARef.current : svgBRef.current
+            if (!svg) return
+
             // 獲取 SVG 元素的位置和大小
-            const rect = (e.target as SVGSVGElement).getBoundingClientRect()
-            // 計算點擊位置相對於 SVG 元素的座標
+            const rect = svg.getBoundingClientRect()
+
+            // 計算相對於 SVG 的座標
             const x = e.clientX - rect.left
             const y = e.clientY - rect.top
 
-            // 根據點擊的是哪個圖表選擇對應的比例尺
-            const xScale = plot === "A" ? xScaleA : xScaleB
-            // 使用 invert() 將像素座標轉換回實際的數據值
-            // 減去 margin 的偏移以獲得正確的數據值
-            const dataX = xScale.invert(x - margin.left)
-            const dataY = yScale.invert(y - margin.top)
+            const margin = { top: 40, right: 20, bottom: 40, left: 50 }
+            const innerWidth = 400 - margin.left - margin.right
+            const innerHeight = 400 - margin.top - margin.bottom
 
-            // 更新點擊位置的狀態
+            // 計算相對於繪圖區域的座標
+            const plotX = x - margin.left
+            const plotY = y - margin.top
+
+            // 確保座標在繪圖區域內
+            if (plotX < 0 || plotX > innerWidth || plotY < 0 || plotY > innerHeight) return
+
+            const xScale =
+                plot === "A"
+                    ? d3.scaleLinear().domain([180, 1000]).range([0, innerWidth])
+                    : d3.scaleLinear().domain([-20, 1000]).range([0, innerWidth])
+            const yScale = d3.scaleLinear().domain([-20, 1000]).range([innerHeight, 0])
+
+            const dataX = xScale.invert(plotX)
+            const dataY = yScale.invert(plotY)
+
             setClickedPoint({ x: dataX, y: dataY, plot })
-        }
 
+            if (isDrawingPolygon) {
+                setPolygonPoints((prev) => [...prev, { x: dataX, y: dataY, plot }])
+            }
+        },
+        [isDrawingPolygon],
+    )
+
+    useEffect(() => {
         // 為兩個 SVG 元素添加點擊事件監聽器
         if (svgARef.current) {
             svgARef.current.addEventListener("click", (e) => handleClick(e, "A"))
@@ -170,12 +262,18 @@ export default function Home() {
                 svgBRef.current.removeEventListener("click", (e) => handleClick(e, "B"))
             }
         }
-    }, [points])
+    }, [handleClick])
+
+    const handlePolygonButtonClick = useCallback(() => {
+        setIsDrawingPolygon(true)
+        setPolygonPoints([])
+    }, [])
 
     return (
         <div className="flex flex-col items-center gap-8 p-4">
-            <h1 className="mb-2 text-xl font-semibold">Plot A & Plot B</h1>
-
+            <Button onClick={handlePolygonButtonClick}>
+                <span>Arbitrary Polygon</span>
+            </Button>
             <div className="flex gap-8">
                 <div className="flex flex-col items-center">
                     <span className="mb-1 text-sm font-medium">Plot A (CD45-KrO vs SS INT LIN)</span>
