@@ -134,20 +134,26 @@ export default function Home() {
             drawPlot(svgBRef, xScaleB, "CD19-PB", "SS INT LIN", (d) => d.b)
         }
 
-        // 添加點擊事件處理器
+        // 處理點擊事件的函數
         const handleClick = (e: MouseEvent, plot: "A" | "B") => {
+            // 獲取 SVG 元素的位置和大小
             const rect = (e.target as SVGSVGElement).getBoundingClientRect()
+            // 計算點擊位置相對於 SVG 元素的座標
             const x = e.clientX - rect.left
             const y = e.clientY - rect.top
 
-            // 轉換為實際數據值
+            // 根據點擊的是哪個圖表選擇對應的比例尺
             const xScale = plot === "A" ? xScaleA : xScaleB
+            // 使用 invert() 將像素座標轉換回實際的數據值
+            // 減去 margin 的偏移以獲得正確的數據值
             const dataX = xScale.invert(x - margin.left)
             const dataY = yScale.invert(y - margin.top)
 
+            // 更新點擊位置的狀態
             setClickedPoint({ x: dataX, y: dataY, plot })
         }
 
+        // 為兩個 SVG 元素添加點擊事件監聽器
         if (svgARef.current) {
             svgARef.current.addEventListener("click", (e) => handleClick(e, "A"))
         }
@@ -155,6 +161,7 @@ export default function Home() {
             svgBRef.current.addEventListener("click", (e) => handleClick(e, "B"))
         }
 
+        // 清理函數：移除事件監聽器，避免記憶體洩漏
         return () => {
             if (svgARef.current) {
                 svgARef.current.removeEventListener("click", (e) => handleClick(e, "A"))
@@ -169,10 +176,12 @@ export default function Home() {
         <div className="flex flex-col items-center gap-8 p-4">
             <h1 className="mb-2 text-xl font-semibold">Plot A & Plot B</h1>
 
-            {/* 顯示點擊座標 */}
+            {/* 顯示點擊座標的區域 */}
             {clickedPoint && (
                 <div className="mb-4 rounded bg-gray-100 p-2">
-                    Clicked at Plot {clickedPoint.plot}: X: {clickedPoint.x.toFixed(2)}, Y: {clickedPoint.y.toFixed(2)}
+                    {/* 顯示點擊的是哪個圖表 */}
+                    Clicked at Plot {clickedPoint.plot}:{/* 顯示轉換後的實際數據值，保留兩位小數 */}
+                    X: {clickedPoint.x.toFixed(2)}, Y: {clickedPoint.y.toFixed(2)}
                 </div>
             )}
 
