@@ -176,15 +176,6 @@ export default function Home() {
         <div className="flex flex-col items-center gap-8 p-4">
             <h1 className="mb-2 text-xl font-semibold">Plot A & Plot B</h1>
 
-            {/* 顯示點擊座標的區域 */}
-            {clickedPoint && (
-                <div className="mb-4 rounded bg-gray-100 p-2">
-                    {/* 顯示點擊的是哪個圖表 */}
-                    Clicked at Plot {clickedPoint.plot}:{/* 顯示轉換後的實際數據值，保留兩位小數 */}
-                    X: {clickedPoint.x.toFixed(2)}, Y: {clickedPoint.y.toFixed(2)}
-                </div>
-            )}
-
             <div className="flex gap-8">
                 <div className="flex flex-col items-center">
                     <span className="mb-1 text-sm font-medium">Plot A (CD45-KrO vs SS INT LIN)</span>
@@ -195,6 +186,14 @@ export default function Home() {
                     <svg ref={svgBRef} width={400} height={400} className="border" />
                 </div>
             </div>
+            {/* 顯示點擊座標的區域 */}
+            {clickedPoint && (
+                <div className="mb-4 rounded bg-gray-100 p-2">
+                    {/* 顯示點擊的是哪個圖表 */}
+                    Clicked at Plot {clickedPoint.plot}:{/* 顯示轉換後的實際數據值，保留兩位小數 */}
+                    X: {clickedPoint.x.toFixed(2)}, Y: {clickedPoint.y.toFixed(2)}
+                </div>
+            )}
         </div>
     )
 }
