@@ -7,6 +7,7 @@ export default function Home() {
     const svgARef = useRef<SVGSVGElement | null>(null)
     const svgBRef = useRef<SVGSVGElement | null>(null)
     const [points, setPoints] = useState<{ a: [number, number]; b: [number, number] }[]>([])
+    const [clickedPoint, setClickedPoint] = useState<{ x: number; y: number; plot: "A" | "B" } | null>(null)
 
     useEffect(() => {
         d3.csv("/CD45_pos.csv", (d) => {
@@ -132,11 +133,49 @@ export default function Home() {
         if (svgBRef.current) {
             drawPlot(svgBRef, xScaleB, "CD19-PB", "SS INT LIN", (d) => d.b)
         }
+
+        // 添加點擊事件處理器
+        const handleClick = (e: MouseEvent, plot: "A" | "B") => {
+            const rect = (e.target as SVGSVGElement).getBoundingClientRect()
+            const x = e.clientX - rect.left
+            const y = e.clientY - rect.top
+
+            // 轉換為實際數據值
+            const xScale = plot === "A" ? xScaleA : xScaleB
+            const dataX = xScale.invert(x - margin.left)
+            const dataY = yScale.invert(y - margin.top)
+
+            setClickedPoint({ x: dataX, y: dataY, plot })
+        }
+
+        if (svgARef.current) {
+            svgARef.current.addEventListener("click", (e) => handleClick(e, "A"))
+        }
+        if (svgBRef.current) {
+            svgBRef.current.addEventListener("click", (e) => handleClick(e, "B"))
+        }
+
+        return () => {
+            if (svgARef.current) {
+                svgARef.current.removeEventListener("click", (e) => handleClick(e, "A"))
+            }
+            if (svgBRef.current) {
+                svgBRef.current.removeEventListener("click", (e) => handleClick(e, "B"))
+            }
+        }
     }, [points])
 
     return (
         <div className="flex flex-col items-center gap-8 p-4">
             <h1 className="mb-2 text-xl font-semibold">Plot A & Plot B</h1>
+
+            {/* 顯示點擊座標 */}
+            {clickedPoint && (
+                <div className="mb-4 rounded bg-gray-100 p-2">
+                    Clicked at Plot {clickedPoint.plot}: X: {clickedPoint.x.toFixed(2)}, Y: {clickedPoint.y.toFixed(2)}
+                </div>
+            )}
+
             <div className="flex gap-8">
                 <div className="flex flex-col items-center">
                     <span className="mb-1 text-sm font-medium">Plot A (CD45-KrO vs SS INT LIN)</span>
