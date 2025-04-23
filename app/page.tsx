@@ -4,6 +4,13 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import * as d3 from "d3"
 import { Button } from "@/components/ui/button"
 
+const LABEL_COLORS = {
+    "CD45-": "#FFC0CB", // 粉色
+    Gr: "#0000FF", // 藍色
+    Mo: "#00FF00", // 綠色
+    Ly: "#FF0000", // 紅色
+}
+
 export default function Home() {
     const svgARef = useRef<SVGSVGElement | null>(null)
     const svgBRef = useRef<SVGSVGElement | null>(null)
@@ -11,6 +18,7 @@ export default function Home() {
     const [clickedPoint, setClickedPoint] = useState<{ x: number; y: number; plot: "A" | "B" } | null>(null)
     const [polygonPoints, setPolygonPoints] = useState<{ x: number; y: number; plot: "A" | "B" }[]>([])
     const [isDrawingPolygon, setIsDrawingPolygon] = useState(false)
+    const [selectedLabel, setSelectedLabel] = useState<"CD45-" | "Gr" | "Mo" | "Ly" | null>(null)
 
     // 初始化數據
     useEffect(() => {
@@ -166,6 +174,7 @@ export default function Home() {
             if (!pointsForThisPlot.length) return
 
             const xScale = plot === "A" ? xScaleA : xScaleB
+            const color = selectedLabel ? LABEL_COLORS[selectedLabel] : "red"
 
             // 繪製點
             g.selectAll(".polygon-point")
@@ -176,7 +185,7 @@ export default function Home() {
                 .attr("cx", (d) => xScale(d.x))
                 .attr("cy", (d) => yScale(d.y))
                 .attr("r", 4)
-                .attr("fill", "red")
+                .attr("fill", color)
 
             // 繪製線
             if (pointsForThisPlot.length > 1) {
@@ -189,7 +198,7 @@ export default function Home() {
                     .attr("class", "polygon-line")
                     .datum(pointsForThisPlot)
                     .attr("fill", "none")
-                    .attr("stroke", "red")
+                    .attr("stroke", color)
                     .attr("stroke-width", 2)
                     .attr("d", line)
             }
@@ -201,7 +210,7 @@ export default function Home() {
         if (svgBRef.current) {
             drawPolygon(svgBRef, "B")
         }
-    }, [polygonPoints])
+    }, [polygonPoints, selectedLabel])
 
     const handleClick = useCallback(
         (e: MouseEvent, plot: "A" | "B") => {
@@ -237,11 +246,11 @@ export default function Home() {
 
             setClickedPoint({ x: dataX, y: dataY, plot })
 
-            if (isDrawingPolygon) {
+            if (isDrawingPolygon && selectedLabel) {
                 setPolygonPoints((prev) => [...prev, { x: dataX, y: dataY, plot }])
             }
         },
-        [isDrawingPolygon],
+        [isDrawingPolygon, selectedLabel],
     )
 
     useEffect(() => {
@@ -264,15 +273,39 @@ export default function Home() {
         }
     }, [handleClick])
 
+    const handleLabelClick = useCallback((label: "CD45-" | "Gr" | "Mo" | "Ly") => {
+        setSelectedLabel(label)
+    }, [])
+
     const handlePolygonButtonClick = useCallback(() => {
+        if (!selectedLabel) return
         setIsDrawingPolygon(true)
         setPolygonPoints([])
-    }, [])
+    }, [selectedLabel])
 
     return (
         <div className="flex flex-col items-center gap-8 p-4">
-            <Button onClick={handlePolygonButtonClick}>
-                <span>Arbitrary Polygon</span>
+            <div className="flex gap-4">
+                {(["CD45-", "Gr", "Mo", "Ly"] as const).map((label) => (
+                    <Button
+                        key={label}
+                        onClick={() => handleLabelClick(label)}
+                        style={{
+                            backgroundColor: LABEL_COLORS[label],
+                            border: selectedLabel === label ? "2px solid black" : "none",
+                        }}
+                        className="text-white"
+                    >
+                        {label}
+                    </Button>
+                ))}
+            </div>
+            <Button
+                onClick={handlePolygonButtonClick}
+                disabled={!selectedLabel}
+                className={!selectedLabel ? "opacity-50" : ""}
+            >
+                Arbitrary Polygon
             </Button>
             <div className="flex gap-8">
                 <div className="flex flex-col items-center">
@@ -288,8 +321,7 @@ export default function Home() {
             {clickedPoint && (
                 <div className="mb-4 rounded bg-gray-100 p-2">
                     {/* 顯示點擊的是哪個圖表 */}
-                    Clicked at Plot {clickedPoint.plot}:{/* 顯示轉換後的實際數據值，保留兩位小數 */}
-                    X: {clickedPoint.x.toFixed(2)}, Y: {clickedPoint.y.toFixed(2)}
+                    Clicked at Plot {clickedPoint.plot}: X: {clickedPoint.x.toFixed(2)}, Y: {clickedPoint.y.toFixed(2)}
                 </div>
             )}
         </div>
