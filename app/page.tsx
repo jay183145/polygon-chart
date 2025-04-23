@@ -4,19 +4,6 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import * as d3 from "d3"
 import { Button } from "@/components/ui/button"
 
-const LABEL_COLORS = {
-    "CD45-": "#FFC0CB", // 粉色
-    Gr: "#0000FF", // 藍色
-    Mo: "#00FF00", // 綠色
-    Ly: "#FF0000", // 紅色
-}
-
-interface Point {
-    x: number
-    y: number
-    plot: "A" | "B"
-}
-
 interface PolygonPoint {
     x: number
     y: number
@@ -25,7 +12,8 @@ interface PolygonPoint {
 
 interface Polygon {
     points: PolygonPoint[]
-    label: "CD45-" | "Gr" | "Mo" | "Ly"
+    color: string
+    name: string
 }
 
 export default function Home() {
@@ -35,8 +23,64 @@ export default function Home() {
     const [clickedPoint, setClickedPoint] = useState<{ x: number; y: number; plot: "A" | "B" } | null>(null)
     const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([])
     const [isDrawingPolygon, setIsDrawingPolygon] = useState(false)
-    const [selectedLabel, setSelectedLabel] = useState<"CD45-" | "Gr" | "Mo" | "Ly" | null>(null)
     const [polygons, setPolygons] = useState<Polygon[]>([])
+    const [showPolygonDialog, setShowPolygonDialog] = useState(false)
+    const [newPolygonColor, setNewPolygonColor] = useState("#FF0000")
+    const [newPolygonName, setNewPolygonName] = useState("")
+    const [tempPolygon, setTempPolygon] = useState<PolygonPoint[]>([])
+
+    const handleClick = useCallback(
+        (e: MouseEvent, plot: "A" | "B") => {
+            const svg = plot === "A" ? svgARef.current : svgBRef.current
+            if (!svg) return
+
+            const rect = svg.getBoundingClientRect()
+            const x = e.clientX - rect.left
+            const y = e.clientY - rect.top
+
+            const margin = { top: 40, right: 20, bottom: 40, left: 50 }
+            const innerWidth = 400 - margin.left - margin.right
+            const innerHeight = 400 - margin.top - margin.bottom
+
+            const plotX = x - margin.left
+            const plotY = y - margin.top
+
+            if (plotX < 0 || plotX > innerWidth || plotY < 0 || plotY > innerHeight) return
+
+            const xScale =
+                plot === "A"
+                    ? d3.scaleLinear().domain([180, 1000]).range([0, innerWidth])
+                    : d3.scaleLinear().domain([-20, 1000]).range([0, innerWidth])
+            const yScale = d3.scaleLinear().domain([-20, 1000]).range([innerHeight, 0])
+
+            const dataX = xScale.invert(plotX)
+            const dataY = yScale.invert(plotY)
+
+            setClickedPoint({ x: dataX, y: dataY, plot })
+
+            if (isDrawingPolygon) {
+                setPolygonPoints((currentPoints) => {
+                    if (currentPoints.length > 0) {
+                        const firstPoint = currentPoints[0]
+                        const distance = Math.sqrt(
+                            Math.pow(plotX - xScale(firstPoint.x), 2) + Math.pow(plotY - yScale(firstPoint.y), 2),
+                        )
+
+                        if (distance < 20) {
+                            if (currentPoints.length >= 3) {
+                                setTempPolygon([...currentPoints, { ...firstPoint }])
+                                setShowPolygonDialog(true)
+                            }
+                            setIsDrawingPolygon(false)
+                            return []
+                        }
+                    }
+                    return [...currentPoints, { x: dataX, y: dataY, plot }]
+                })
+            }
+        },
+        [isDrawingPolygon],
+    )
 
     // 初始化數據
     useEffect(() => {
@@ -168,21 +212,10 @@ export default function Home() {
 
     // 繪製多邊形
     useEffect(() => {
-        const width = 400
-        const height = 400
-        const margin = { top: 40, right: 20, bottom: 40, left: 50 }
-        const innerWidth = width - margin.left - margin.right
-        const innerHeight = height - margin.top - margin.bottom
-
-        const xScaleA = d3.scaleLinear().domain([180, 1000]).range([0, innerWidth])
-        const xScaleB = d3.scaleLinear().domain([-20, 1000]).range([0, innerWidth])
-        const yScale = d3.scaleLinear().domain([-20, 1000]).range([innerHeight, 0])
-
         function drawPolygon(svgRef: React.RefObject<SVGSVGElement | null>, plot: "A" | "B") {
             const svg = d3.select(svgRef.current)
             const g = svg.select("g")
 
-            // 清除之前的多邊形
             g.selectAll(".polygon-point").remove()
             g.selectAll(".polygon-line").remove()
             g.selectAll(".polygon-area").remove()
@@ -193,8 +226,12 @@ export default function Home() {
                 const pointsForThisPlot: PolygonPoint[] = polygon.points.filter((p: PolygonPoint) => p.plot === plot)
                 if (!pointsForThisPlot.length) return
 
-                const xScale = plot === "A" ? xScaleA : xScaleB
-                const color = LABEL_COLORS[polygon.label]
+                const xScale =
+                    plot === "A"
+                        ? d3.scaleLinear().domain([180, 1000]).range([0, 330])
+                        : d3.scaleLinear().domain([-20, 1000]).range([0, 330])
+                const yScale = d3.scaleLinear().domain([-20, 1000]).range([320, 0])
+                const color = polygon.color
 
                 // 將點轉換為繪圖座標
                 const polygonCoords: [number, number][] = pointsForThisPlot.map((p: PolygonPoint) => [
@@ -246,12 +283,16 @@ export default function Home() {
             })
 
             // 繪製當前正在繪製的多邊形
-            if (isDrawingPolygon && selectedLabel) {
+            if (isDrawingPolygon) {
                 const pointsForThisPlot: PolygonPoint[] = polygonPoints.filter((p: PolygonPoint) => p.plot === plot)
                 if (!pointsForThisPlot.length) return
 
-                const xScale = plot === "A" ? xScaleA : xScaleB
-                const color = LABEL_COLORS[selectedLabel]
+                const xScale =
+                    plot === "A"
+                        ? d3.scaleLinear().domain([180, 1000]).range([0, 330])
+                        : d3.scaleLinear().domain([-20, 1000]).range([0, 330])
+                const yScale = d3.scaleLinear().domain([-20, 1000]).range([320, 0])
+                const color = newPolygonColor
 
                 // 將點轉換為繪圖座標
                 const polygonCoords: [number, number][] = pointsForThisPlot.map((p: PolygonPoint) => [
@@ -324,80 +365,36 @@ export default function Home() {
         if (svgBRef.current) {
             drawPolygon(svgBRef, "B")
         }
-    }, [polygonPoints, selectedLabel, isDrawingPolygon, polygons])
+    }, [polygonPoints, isDrawingPolygon, polygons, newPolygonColor])
 
-    const handleClick = useCallback(
-        (e: MouseEvent, plot: "A" | "B") => {
-            const svg = plot === "A" ? svgARef.current : svgBRef.current
-            if (!svg) return
-
-            // 獲取 SVG 元素的位置和大小
-            const rect = svg.getBoundingClientRect()
-
-            // 計算相對於 SVG 的座標
-            const x = e.clientX - rect.left
-            const y = e.clientY - rect.top
-
-            const margin = { top: 40, right: 20, bottom: 40, left: 50 }
-            const innerWidth = 400 - margin.left - margin.right
-            const innerHeight = 400 - margin.top - margin.bottom
-
-            // 計算相對於繪圖區域的座標
-            const plotX = x - margin.left
-            const plotY = y - margin.top
-
-            // 確保座標在繪圖區域內
-            if (plotX < 0 || plotX > innerWidth || plotY < 0 || plotY > innerHeight) return
-
-            const xScale =
-                plot === "A"
-                    ? d3.scaleLinear().domain([180, 1000]).range([0, innerWidth])
-                    : d3.scaleLinear().domain([-20, 1000]).range([0, innerWidth])
-            const yScale = d3.scaleLinear().domain([-20, 1000]).range([innerHeight, 0])
-
-            const dataX = xScale.invert(plotX)
-            const dataY = yScale.invert(plotY)
-
-            setClickedPoint({ x: dataX, y: dataY, plot })
-
-            if (isDrawingPolygon && selectedLabel) {
-                setPolygonPoints((prev) => [...prev, { x: dataX, y: dataY, plot }])
-            }
-        },
-        [isDrawingPolygon, selectedLabel],
-    )
-
+    // 事件監聽器
     useEffect(() => {
-        // 為兩個 SVG 元素添加點擊事件監聽器
-        if (svgARef.current) {
-            svgARef.current.addEventListener("click", (e) => handleClick(e, "A"))
+        const svgA = svgARef.current
+        const svgB = svgBRef.current
+
+        if (svgA) {
+            svgA.addEventListener("click", (e) => handleClick(e, "A"))
         }
-        if (svgBRef.current) {
-            svgBRef.current.addEventListener("click", (e) => handleClick(e, "B"))
+        if (svgB) {
+            svgB.addEventListener("click", (e) => handleClick(e, "B"))
         }
 
-        // 清理函數：移除事件監聽器，避免記憶體洩漏
         return () => {
-            if (svgARef.current) {
-                svgARef.current.removeEventListener("click", (e) => handleClick(e, "A"))
+            if (svgA) {
+                svgA.removeEventListener("click", (e) => handleClick(e, "A"))
             }
-            if (svgBRef.current) {
-                svgBRef.current.removeEventListener("click", (e) => handleClick(e, "B"))
+            if (svgB) {
+                svgB.removeEventListener("click", (e) => handleClick(e, "B"))
             }
         }
     }, [handleClick])
 
-    const handleLabelClick = useCallback((label: "CD45-" | "Gr" | "Mo" | "Ly") => {
-        setSelectedLabel(label)
-    }, [])
-
     const handlePolygonButtonClick = useCallback(() => {
-        if (!selectedLabel) return
-
         if (isDrawingPolygon) {
             // 如果正在繪製，則保存多邊形並清理
             if (polygonPoints.length >= 3) {
-                setPolygons((prev) => [...prev, { points: [...polygonPoints], label: selectedLabel }])
+                setTempPolygon([...polygonPoints])
+                setShowPolygonDialog(true)
             }
             setIsDrawingPolygon(false)
             setPolygonPoints([])
@@ -406,31 +403,23 @@ export default function Home() {
             setIsDrawingPolygon(true)
             setPolygonPoints([])
         }
-    }, [selectedLabel, isDrawingPolygon, polygonPoints])
+    }, [isDrawingPolygon, polygonPoints])
+
+    const handleSavePolygon = useCallback(() => {
+        if (tempPolygon.length >= 3 && newPolygonName.trim()) {
+            setPolygons((prev) => [
+                ...prev,
+                { points: tempPolygon, color: newPolygonColor, name: newPolygonName.trim() },
+            ])
+            setShowPolygonDialog(false)
+            setNewPolygonName("")
+        }
+    }, [tempPolygon, newPolygonColor, newPolygonName])
 
     return (
         <div className="flex flex-col items-center gap-8 p-4">
-            <div className="flex gap-4">
-                {(["CD45-", "Gr", "Mo", "Ly"] as const).map((label) => (
-                    <Button
-                        key={label}
-                        onClick={() => handleLabelClick(label)}
-                        style={{
-                            backgroundColor: LABEL_COLORS[label],
-                            border: selectedLabel === label ? "2px solid black" : "none",
-                        }}
-                        className="text-white"
-                    >
-                        {label}
-                    </Button>
-                ))}
-            </div>
-            <Button
-                onClick={handlePolygonButtonClick}
-                disabled={!selectedLabel}
-                className={!selectedLabel ? "opacity-50" : ""}
-            >
-                {!selectedLabel ? "Arbitrary Polygon" : isDrawingPolygon ? "Drawing..." : "Click to Draw"}
+            <Button onClick={handlePolygonButtonClick} className={isDrawingPolygon ? "bg-red-500" : ""}>
+                {isDrawingPolygon ? "Drawing..." : "Click to Draw"}
             </Button>
             <div className="flex gap-8">
                 <div className="flex flex-col items-center">
@@ -442,11 +431,53 @@ export default function Home() {
                     <svg ref={svgBRef} width={400} height={400} className="border" />
                 </div>
             </div>
-            {/* 顯示點擊座標的區域 */}
             {clickedPoint && (
                 <div className="mb-4 rounded bg-gray-100 p-2">
-                    {/* 顯示點擊的是哪個圖表 */}
                     Clicked at Plot {clickedPoint.plot}: X: {clickedPoint.x.toFixed(2)}, Y: {clickedPoint.y.toFixed(2)}
+                </div>
+            )}
+            {showPolygonDialog && (
+                <div className="bg-opacity-50 fixed inset-0 flex items-center justify-center bg-black">
+                    <div className="rounded-lg bg-white p-6">
+                        <h2 className="mb-4 text-xl font-bold">Save Polygon</h2>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700">Name</label>
+                            <input
+                                type="text"
+                                value={newPolygonName}
+                                onChange={(e) => setNewPolygonName(e.target.value)}
+                                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                                placeholder="Enter polygon name"
+                            />
+                        </div>
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700">Color</label>
+                            <input
+                                type="color"
+                                value={newPolygonColor}
+                                onChange={(e) => setNewPolygonColor(e.target.value)}
+                                className="mt-1 block h-10 w-full"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                onClick={() => {
+                                    setShowPolygonDialog(false)
+                                    setNewPolygonName("")
+                                }}
+                                className="rounded bg-gray-500 px-4 py-2 text-white"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSavePolygon}
+                                disabled={!newPolygonName.trim()}
+                                className="rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
