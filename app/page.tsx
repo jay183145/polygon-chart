@@ -219,7 +219,7 @@ export default function Home() {
             g.selectAll(".polygon-point").remove()
             g.selectAll(".polygon-line").remove()
             g.selectAll(".polygon-area").remove()
-            g.selectAll(".polygon-area-text").remove()
+            g.selectAll(".polygon-label").remove()
 
             // 繪製已保存的多邊形
             polygons.forEach((polygon) => {
@@ -280,6 +280,19 @@ export default function Home() {
                     .attr("cy", (d: PolygonPoint) => yScale(d.y))
                     .attr("r", 4)
                     .attr("fill", color)
+
+                // 計算多邊形中心點並添加名稱標籤
+                if (pointsForThisPlot.length >= 3) {
+                    const centroid = d3.polygonCentroid(polygonCoords)
+                    g.append("text")
+                        .attr("class", "polygon-label")
+                        .attr("x", centroid[0])
+                        .attr("y", centroid[1])
+                        .attr("text-anchor", "middle")
+                        .attr("fill", color)
+                        .attr("font-weight", "bold")
+                        .text(polygon.name)
+                }
             })
 
             // 繪製當前正在繪製的多邊形
@@ -299,9 +312,6 @@ export default function Home() {
                     xScale(p.x),
                     yScale(p.y),
                 ])
-
-                // 計算多邊形面積
-                const area = d3.polygonArea(polygonCoords)
 
                 // 繪製多邊形區域
                 if (pointsForThisPlot.length >= 3) {
@@ -344,18 +354,6 @@ export default function Home() {
                     .attr("cy", (d: PolygonPoint) => yScale(d.y))
                     .attr("r", 4)
                     .attr("fill", color)
-
-                // 顯示多邊形面積
-                if (pointsForThisPlot.length >= 3) {
-                    const centroid = d3.polygonCentroid(polygonCoords)
-                    g.append("text")
-                        .attr("class", "polygon-area-text")
-                        .attr("x", centroid[0])
-                        .attr("y", centroid[1])
-                        .attr("text-anchor", "middle")
-                        .attr("fill", color)
-                        .text(`Area: ${Math.abs(area).toFixed(2)}`)
-                }
             }
         }
 
