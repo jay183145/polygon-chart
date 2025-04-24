@@ -216,6 +216,43 @@ export default function Home() {
         }
     }, [points])
 
+    // 計算點是否在多邊形內部
+    const isPointInPolygon = useCallback((point: [number, number], polygon: [number, number][]) => {
+        let inside = false
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+            const xi = polygon[i][0]
+            const yi = polygon[i][1]
+            const xj = polygon[j][0]
+            const yj = polygon[j][1]
+
+            const intersect =
+                yi > point[1] !== yj > point[1] && point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi
+            if (intersect) inside = !inside
+        }
+        return inside
+    }, [])
+
+    // 計算多邊形內部的點數量
+    const countPointsInPolygon = useCallback(
+        (polygon: PolygonPoint[], plot: "A" | "B") => {
+            // 將多邊形點轉換為繪圖座標
+            const xScale =
+                plot === "A"
+                    ? d3.scaleLinear().domain([180, 1000]).range([0, 330])
+                    : d3.scaleLinear().domain([-20, 1000]).range([0, 330])
+            const yScale = d3.scaleLinear().domain([-20, 1000]).range([320, 0])
+
+            const polygonCoords = polygon.map((p) => [xScale(p.x), yScale(p.y)] as [number, number])
+
+            // 計算內部點數量
+            return points.filter((p) => {
+                const point = plot === "A" ? p.a : p.b
+                return isPointInPolygon([xScale(point[0]), yScale(point[1])], polygonCoords)
+            }).length
+        },
+        [points, isPointInPolygon],
+    )
+
     // 繪製多邊形
     useEffect(() => {
         function drawPolygon(svgRef: React.RefObject<SVGSVGElement | null>, plot: "A" | "B") {
@@ -304,17 +341,30 @@ export default function Home() {
                 .attr("r", 4)
                 .attr("fill", color)
 
-            // 添加名稱標籤
+            // 添加名稱標籤和點數量
             if (points.length >= 3) {
                 const centroid = d3.polygonCentroid(polygonCoords)
+                const pointCount = countPointsInPolygon(points, points[0].plot)
+
+                // 添加名稱標籤
                 g.append("text")
                     .attr("class", "polygon-label")
                     .attr("x", centroid[0])
-                    .attr("y", centroid[1])
+                    .attr("y", centroid[1] - 10) // 向上偏移 10 像素
                     .attr("text-anchor", "middle")
                     .attr("fill", color)
                     .attr("font-weight", "bold")
                     .text(name)
+
+                // 添加細胞數量標籤
+                g.append("text")
+                    .attr("class", "polygon-label")
+                    .attr("x", centroid[0])
+                    .attr("y", centroid[1] + 10) // 向下偏移 10 像素
+                    .attr("text-anchor", "middle")
+                    .attr("fill", color)
+                    .attr("font-weight", "bold")
+                    .text(`${pointCount} cells`)
             }
         }
 
@@ -324,7 +374,7 @@ export default function Home() {
         if (svgBRef.current) {
             drawPolygon(svgBRef, "B")
         }
-    }, [polygonPoints, isDrawingPolygon, newPolygonColor, polygons])
+    }, [polygonPoints, isDrawingPolygon, newPolygonColor, polygons, countPointsInPolygon])
 
     // 事件監聽器
     useEffect(() => {
