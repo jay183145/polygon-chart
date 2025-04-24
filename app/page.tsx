@@ -22,13 +22,12 @@ export default function Home() {
     const svgBRef = useRef<SVGSVGElement | null>(null)
     const [points, setPoints] = useState<{ a: [number, number]; b: [number, number] }[]>([])
     const [clickedPoint, setClickedPoint] = useState<{ x: number; y: number; plot: "A" | "B" } | null>(null)
-    const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([])
     const [isDrawingPolygon, setIsDrawingPolygon] = useState(false)
     const [showPolygonDialog, setShowPolygonDialog] = useState(false)
+    const [polygons, setPolygons] = useState<Polygon[]>([])
     const [newPolygonColor, setNewPolygonColor] = useState("#FF0000")
     const [newPolygonName, setNewPolygonName] = useState("")
-    const [newPolygon, setNewPolygon] = useState<PolygonPoint[]>([])
-    const [polygons, setPolygons] = useState<Polygon[]>([])
+    const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([])
 
     const handleClick = useCallback(
         (e: MouseEvent, plot: "A" | "B") => {
@@ -61,26 +60,32 @@ export default function Home() {
 
             if (isDrawingPolygon) {
                 setPolygonPoints((currentPoints) => {
+                    // 如果已經有點，檢查是否在同一個圖表上
+                    if (currentPoints.length > 0 && currentPoints[0].plot !== plot) {
+                        // 如果嘗試在不同圖表上添加點，停止繪製
+                        setIsDrawingPolygon(false)
+                        return []
+                    }
+
                     if (currentPoints.length > 0) {
                         const firstPoint = currentPoints[0]
                         const distance = Math.sqrt(
                             Math.pow(plotX - xScale(firstPoint.x), 2) + Math.pow(plotY - yScale(firstPoint.y), 2),
                         )
-
+                        // 誤差 20 內自動完成多邊形
                         if (distance < 20) {
                             if (currentPoints.length >= 3) {
-                                setNewPolygon([...currentPoints, { ...firstPoint }])
                                 setShowPolygonDialog(true)
                             }
-                            setIsDrawingPolygon(false)
-                            return []
+                            return [...currentPoints, { ...firstPoint }]
                         }
                     }
+                    // 其他狀況直接存入多邊形的點
                     return [...currentPoints, { x: dataX, y: dataY, plot }]
                 })
             }
         },
-        [isDrawingPolygon],
+        [isDrawingPolygon, newPolygonColor, newPolygonName],
     )
 
     // 初始化數據
@@ -326,65 +331,64 @@ export default function Home() {
         const svgA = svgARef.current
         const svgB = svgBRef.current
 
-        if (svgA) {
-            svgA.addEventListener("click", (e) => handleClick(e, "A"))
-        }
-        if (svgB) {
-            svgB.addEventListener("click", (e) => handleClick(e, "B"))
+        const handleClickA = (e: MouseEvent) => handleClick(e, "A")
+        const handleClickB = (e: MouseEvent) => handleClick(e, "B")
+
+        if (isDrawingPolygon) {
+            if (svgA) {
+                svgA.addEventListener("click", handleClickA)
+            }
+            if (svgB) {
+                svgB.addEventListener("click", handleClickB)
+            }
         }
 
         return () => {
+            // 清理事件監聽器
             if (svgA) {
-                svgA.removeEventListener("click", (e) => handleClick(e, "A"))
+                svgA.removeEventListener("click", handleClickA)
             }
             if (svgB) {
-                svgB.removeEventListener("click", (e) => handleClick(e, "B"))
+                svgB.removeEventListener("click", handleClickB)
             }
         }
-    }, [handleClick])
+    }, [handleClick, isDrawingPolygon])
 
     const handlePolygonButtonClick = useCallback(() => {
         if (isDrawingPolygon) {
-            // 如果正在繪製，則保存多邊形並清理
-            if (polygonPoints.length >= 3) {
-                setNewPolygon([...polygonPoints])
-                setShowPolygonDialog(true)
-            }
             setIsDrawingPolygon(false)
-            setPolygonPoints([])
         } else {
-            // 如果沒有在繪製，則開始繪製
             setIsDrawingPolygon(true)
-            setPolygonPoints([])
         }
-    }, [isDrawingPolygon, polygonPoints])
+    }, [isDrawingPolygon])
 
     const handleSavePolygon = useCallback(() => {
-        if (newPolygon.length >= 3 && newPolygonName.trim()) {
+        if (polygonPoints.length >= 3 && newPolygonName.trim()) {
             // 儲存多邊形
             setPolygons((prev) => [
                 ...prev,
                 {
-                    points: newPolygon,
+                    // 將多邊形的點加上第一個點，形成閉合的多邊形
+                    points: [...polygonPoints, { ...polygonPoints[0] }],
                     color: newPolygonColor,
-                    name: newPolygonName.trim(),
+                    name: newPolygonName,
                 },
             ])
-
             // 儲存到 localStorage
             savePolygonData({
                 tagName: newPolygonName,
                 color: newPolygonColor,
-                polygon: newPolygon,
+                polygon: polygonPoints,
             })
 
             // 重置狀態
             setShowPolygonDialog(false)
             setNewPolygonName("")
             setNewPolygonColor("#FF0000")
-            setNewPolygon([])
+            setPolygonPoints([])
+            setIsDrawingPolygon(false)
         }
-    }, [newPolygon, newPolygonColor, newPolygonName])
+    }, [polygonPoints, newPolygonColor, newPolygonName])
 
     return (
         <div className="flex flex-col items-center gap-8 p-4">
