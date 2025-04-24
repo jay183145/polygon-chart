@@ -446,13 +446,70 @@ export default function Home() {
                 {isDrawingPolygon ? "Drawing..." : "Click to Draw"}
             </Button>
             <div className="flex gap-8">
-                <div className="flex flex-col items-center">
-                    <span className="mb-1 text-sm font-medium">Plot A (CD45-KrO vs SS INT LIN)</span>
-                    <svg ref={svgARef} width={400} height={400} className="border" />
+                {/* Plot A 和其圖例 */}
+                <div className="flex items-start gap-4">
+                    <div className="flex flex-col items-center">
+                        <span className="mb-1 text-sm font-medium">Plot A (CD45-KrO vs SS INT LIN)</span>
+                        <svg ref={svgARef} width={400} height={400} className="border" />
+                    </div>
+                    {/* Plot A 的圖例 */}
+                    <div className="w-32 rounded-lg border p-4">
+                        <h3 className="mb-2 text-sm font-semibold">Plot A Legend</h3>
+                        <div className="space-y-2">
+                            {polygons
+                                .filter((polygon) => polygon.points.some((point) => point.plot === "A"))
+                                .map((polygon, index) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                        <div
+                                            className="h-3 w-3 rounded-full"
+                                            style={{ backgroundColor: polygon.color }}
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium">{polygon.name}</span>
+                                            <span className="text-xs text-gray-600">
+                                                {countPointsInPolygon(polygon.points, "A")} cells
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            {!polygons.some((p) => p.points.some((point) => point.plot === "A")) && (
+                                <div className="text-xs text-gray-400 italic">No polygons yet</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
-                <div className="flex flex-col items-center">
-                    <span className="mb-1 text-sm font-medium">Plot B (CD19-PB vs SS INT LIN)</span>
-                    <svg ref={svgBRef} width={400} height={400} className="border" />
+
+                {/* Plot B 和其圖例 */}
+                <div className="flex items-start gap-4">
+                    <div className="flex flex-col items-center">
+                        <span className="mb-1 text-sm font-medium">Plot B (CD19-PB vs SS INT LIN)</span>
+                        <svg ref={svgBRef} width={400} height={400} className="border" />
+                    </div>
+                    {/* Plot B 的圖例 */}
+                    <div className="w-32 rounded-lg border p-4">
+                        <h3 className="mb-2 text-sm font-semibold">Plot B Legend</h3>
+                        <div className="space-y-2">
+                            {polygons
+                                .filter((polygon) => polygon.points.some((point) => point.plot === "B"))
+                                .map((polygon, index) => (
+                                    <div key={index} className="flex items-center gap-2">
+                                        <div
+                                            className="h-3 w-3 rounded-full"
+                                            style={{ backgroundColor: polygon.color }}
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium">{polygon.name}</span>
+                                            <span className="text-xs text-gray-600">
+                                                {countPointsInPolygon(polygon.points, "B")} cells
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            {!polygons.some((p) => p.points.some((point) => point.plot === "B")) && (
+                                <div className="text-xs text-gray-400 italic">No polygons yet</div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
             {clickedPoint && (
