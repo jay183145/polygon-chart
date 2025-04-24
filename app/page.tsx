@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import * as d3 from "d3"
 import { Button } from "@/components/ui/button"
+import { savePolygonData, loadPolygonData, clearPolygonData } from "@/utils/storage"
 
 interface PolygonPoint {
     x: number
@@ -411,6 +412,15 @@ export default function Home() {
             ])
             setShowPolygonDialog(false)
             setNewPolygonName("")
+            setNewPolygonColor("#FF0000")
+            setTempPolygon([])
+
+            // 儲存到 localStorage
+            savePolygonData({
+                tagName: newPolygonName,
+                color: newPolygonColor,
+                polygon: tempPolygon,
+            })
         }
     }, [tempPolygon, newPolygonColor, newPolygonName])
 
