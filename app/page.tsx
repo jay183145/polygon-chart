@@ -24,11 +24,11 @@ export default function Home() {
     const [clickedPoint, setClickedPoint] = useState<{ x: number; y: number; plot: "A" | "B" } | null>(null)
     const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([])
     const [isDrawingPolygon, setIsDrawingPolygon] = useState(false)
-    const [polygons, setPolygons] = useState<Polygon[]>([])
     const [showPolygonDialog, setShowPolygonDialog] = useState(false)
     const [newPolygonColor, setNewPolygonColor] = useState("#FF0000")
     const [newPolygonName, setNewPolygonName] = useState("")
-    const [tempPolygon, setTempPolygon] = useState<PolygonPoint[]>([])
+    const [newPolygon, setNewPolygon] = useState<PolygonPoint[]>([])
+    const [polygons, setPolygons] = useState<Polygon[]>([])
 
     const handleClick = useCallback(
         (e: MouseEvent, plot: "A" | "B") => {
@@ -69,7 +69,7 @@ export default function Home() {
 
                         if (distance < 20) {
                             if (currentPoints.length >= 3) {
-                                setTempPolygon([...currentPoints, { ...firstPoint }])
+                                setNewPolygon([...currentPoints, { ...firstPoint }])
                                 setShowPolygonDialog(true)
                             }
                             setIsDrawingPolygon(false)
@@ -215,146 +215,101 @@ export default function Home() {
     useEffect(() => {
         function drawPolygon(svgRef: React.RefObject<SVGSVGElement | null>, plot: "A" | "B") {
             const svg = d3.select(svgRef.current)
-            const g = svg.select("g")
+            const g = svg.select<SVGGElement>("g")
 
+            // 清除舊的多邊形
             g.selectAll(".polygon-point").remove()
             g.selectAll(".polygon-line").remove()
             g.selectAll(".polygon-area").remove()
             g.selectAll(".polygon-label").remove()
 
-            // 繪製已保存的多邊形
-            polygons.forEach((polygon) => {
-                const pointsForThisPlot: PolygonPoint[] = polygon.points.filter((p: PolygonPoint) => p.plot === plot)
-                if (!pointsForThisPlot.length) return
-
-                const xScale =
-                    plot === "A"
-                        ? d3.scaleLinear().domain([180, 1000]).range([0, 330])
-                        : d3.scaleLinear().domain([-20, 1000]).range([0, 330])
-                const yScale = d3.scaleLinear().domain([-20, 1000]).range([320, 0])
-                const color = polygon.color
-
-                // 將點轉換為繪圖座標
-                const polygonCoords: [number, number][] = pointsForThisPlot.map((p: PolygonPoint) => [
-                    xScale(p.x),
-                    yScale(p.y),
-                ])
-
-                // 繪製多邊形區域
-                if (pointsForThisPlot.length >= 3) {
-                    const polygon = d3
-                        .line<[number, number]>()
-                        .x((d) => d[0])
-                        .y((d) => d[1])
-                        .curve(d3.curveLinearClosed)
-
-                    g.append("path")
-                        .attr("class", "polygon-area")
-                        .attr("d", polygon(polygonCoords))
-                        .attr("fill", color)
-                        .attr("fill-opacity", 0.2)
-                        .attr("stroke", "none")
-                }
-
-                // 繪製多邊形邊界
-                if (pointsForThisPlot.length > 1) {
-                    const line = d3
-                        .line<PolygonPoint>()
-                        .x((d) => xScale(d.x))
-                        .y((d) => yScale(d.y))
-
-                    g.append("path")
-                        .attr("class", "polygon-line")
-                        .attr("d", line(pointsForThisPlot))
-                        .attr("fill", "none")
-                        .attr("stroke", color)
-                        .attr("stroke-width", 2)
-                }
-
-                // 繪製點
-                g.selectAll(".polygon-point")
-                    .data(pointsForThisPlot)
-                    .enter()
-                    .append("circle")
-                    .attr("class", "polygon-point")
-                    .attr("cx", (d: PolygonPoint) => xScale(d.x))
-                    .attr("cy", (d: PolygonPoint) => yScale(d.y))
-                    .attr("r", 4)
-                    .attr("fill", color)
-
-                // 計算多邊形中心點並添加名稱標籤
-                if (pointsForThisPlot.length >= 3) {
-                    const centroid = d3.polygonCentroid(polygonCoords)
-                    g.append("text")
-                        .attr("class", "polygon-label")
-                        .attr("x", centroid[0])
-                        .attr("y", centroid[1])
-                        .attr("text-anchor", "middle")
-                        .attr("fill", color)
-                        .attr("font-weight", "bold")
-                        .text(polygon.name)
-                }
-            })
+            const xScale =
+                plot === "A"
+                    ? d3.scaleLinear().domain([180, 1000]).range([0, 330])
+                    : d3.scaleLinear().domain([-20, 1000]).range([0, 330])
+            const yScale = d3.scaleLinear().domain([-20, 1000]).range([320, 0])
 
             // 繪製當前正在繪製的多邊形
             if (isDrawingPolygon) {
-                const pointsForThisPlot: PolygonPoint[] = polygonPoints.filter((p: PolygonPoint) => p.plot === plot)
-                if (!pointsForThisPlot.length) return
+                const pointsForThisPlot = polygonPoints.filter((p) => p.plot === plot)
+                if (pointsForThisPlot.length > 0) {
+                    drawSinglePolygon(g, pointsForThisPlot, xScale, yScale, newPolygonColor, "Drawing...")
+                }
+            }
 
-                const xScale =
-                    plot === "A"
-                        ? d3.scaleLinear().domain([180, 1000]).range([0, 330])
-                        : d3.scaleLinear().domain([-20, 1000]).range([0, 330])
-                const yScale = d3.scaleLinear().domain([-20, 1000]).range([320, 0])
-                const color = newPolygonColor
-
-                // 將點轉換為繪圖座標
-                const polygonCoords: [number, number][] = pointsForThisPlot.map((p: PolygonPoint) => [
-                    xScale(p.x),
-                    yScale(p.y),
-                ])
-
-                // 繪製多邊形區域
+            // 繪製已儲存的多邊形
+            polygons.forEach((polygon) => {
+                const pointsForThisPlot = polygon.points.filter((p) => p.plot === plot)
                 if (pointsForThisPlot.length >= 3) {
-                    const polygon = d3
-                        .line<[number, number]>()
-                        .x((d) => d[0])
-                        .y((d) => d[1])
-                        .curve(d3.curveLinearClosed)
-
-                    g.append("path")
-                        .attr("class", "polygon-area")
-                        .attr("d", polygon(polygonCoords))
-                        .attr("fill", color)
-                        .attr("fill-opacity", 0.2)
-                        .attr("stroke", "none")
+                    drawSinglePolygon(g, pointsForThisPlot, xScale, yScale, polygon.color, polygon.name)
                 }
+            })
+        }
 
-                // 繪製多邊形邊界
-                if (pointsForThisPlot.length > 1) {
-                    const line = d3
-                        .line<PolygonPoint>()
-                        .x((d) => xScale(d.x))
-                        .y((d) => yScale(d.y))
+        function drawSinglePolygon(
+            g: d3.Selection<SVGGElement, unknown, null, undefined>,
+            points: PolygonPoint[],
+            xScale: d3.ScaleLinear<number, number>,
+            yScale: d3.ScaleLinear<number, number>,
+            color: string,
+            name: string,
+        ) {
+            // 將點轉換為繪圖座標
+            const polygonCoords: [number, number][] = points.map((p) => [xScale(p.x), yScale(p.y)])
 
-                    g.append("path")
-                        .attr("class", "polygon-line")
-                        .attr("d", line(pointsForThisPlot))
-                        .attr("fill", "none")
-                        .attr("stroke", color)
-                        .attr("stroke-width", 2)
-                }
+            // 繪製多邊形區域
+            if (points.length >= 3) {
+                const polygon = d3
+                    .line<[number, number]>()
+                    .x((d) => d[0])
+                    .y((d) => d[1])
+                    .curve(d3.curveLinearClosed)
 
-                // 繪製點
-                g.selectAll(".polygon-point")
-                    .data(pointsForThisPlot)
-                    .enter()
-                    .append("circle")
-                    .attr("class", "polygon-point")
-                    .attr("cx", (d: PolygonPoint) => xScale(d.x))
-                    .attr("cy", (d: PolygonPoint) => yScale(d.y))
-                    .attr("r", 4)
+                g.append("path")
+                    .attr("class", "polygon-area")
+                    .attr("d", polygon(polygonCoords))
                     .attr("fill", color)
+                    .attr("fill-opacity", 0.2)
+                    .attr("stroke", "none")
+            }
+
+            // 繪製多邊形邊界
+            if (points.length > 1) {
+                const line = d3
+                    .line<PolygonPoint>()
+                    .x((d) => xScale(d.x))
+                    .y((d) => yScale(d.y))
+
+                g.append("path")
+                    .attr("class", "polygon-line")
+                    .attr("d", line(points))
+                    .attr("fill", "none")
+                    .attr("stroke", color)
+                    .attr("stroke-width", 2)
+            }
+
+            // 繪製點
+            g.selectAll(".polygon-point")
+                .data(points)
+                .enter()
+                .append("circle")
+                .attr("class", "polygon-point")
+                .attr("cx", (d) => xScale(d.x))
+                .attr("cy", (d) => yScale(d.y))
+                .attr("r", 4)
+                .attr("fill", color)
+
+            // 添加名稱標籤
+            if (points.length >= 3) {
+                const centroid = d3.polygonCentroid(polygonCoords)
+                g.append("text")
+                    .attr("class", "polygon-label")
+                    .attr("x", centroid[0])
+                    .attr("y", centroid[1])
+                    .attr("text-anchor", "middle")
+                    .attr("fill", color)
+                    .attr("font-weight", "bold")
+                    .text(name)
             }
         }
 
@@ -364,7 +319,7 @@ export default function Home() {
         if (svgBRef.current) {
             drawPolygon(svgBRef, "B")
         }
-    }, [polygonPoints, isDrawingPolygon, polygons, newPolygonColor])
+    }, [polygonPoints, isDrawingPolygon, newPolygonColor, polygons])
 
     // 事件監聽器
     useEffect(() => {
@@ -392,7 +347,7 @@ export default function Home() {
         if (isDrawingPolygon) {
             // 如果正在繪製，則保存多邊形並清理
             if (polygonPoints.length >= 3) {
-                setTempPolygon([...polygonPoints])
+                setNewPolygon([...polygonPoints])
                 setShowPolygonDialog(true)
             }
             setIsDrawingPolygon(false)
@@ -405,24 +360,31 @@ export default function Home() {
     }, [isDrawingPolygon, polygonPoints])
 
     const handleSavePolygon = useCallback(() => {
-        if (tempPolygon.length >= 3 && newPolygonName.trim()) {
+        if (newPolygon.length >= 3 && newPolygonName.trim()) {
+            // 儲存多邊形
             setPolygons((prev) => [
                 ...prev,
-                { points: tempPolygon, color: newPolygonColor, name: newPolygonName.trim() },
+                {
+                    points: newPolygon,
+                    color: newPolygonColor,
+                    name: newPolygonName.trim(),
+                },
             ])
-            setShowPolygonDialog(false)
-            setNewPolygonName("")
-            setNewPolygonColor("#FF0000")
-            setTempPolygon([])
 
             // 儲存到 localStorage
             savePolygonData({
                 tagName: newPolygonName,
                 color: newPolygonColor,
-                polygon: tempPolygon,
+                polygon: newPolygon,
             })
+
+            // 重置狀態
+            setShowPolygonDialog(false)
+            setNewPolygonName("")
+            setNewPolygonColor("#FF0000")
+            setNewPolygon([])
         }
-    }, [tempPolygon, newPolygonColor, newPolygonName])
+    }, [newPolygon, newPolygonColor, newPolygonName])
 
     return (
         <div className="flex flex-col items-center gap-8 p-4">
