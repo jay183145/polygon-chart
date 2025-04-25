@@ -15,6 +15,7 @@ interface Polygon {
     points: PolygonPoint[]
     color: string
     name: string
+    visible: boolean
 }
 
 export default function Home() {
@@ -281,6 +282,7 @@ export default function Home() {
 
             // 繪製已儲存的多邊形
             polygons.forEach((polygon) => {
+                if (!polygon.visible) return
                 const pointsForThisPlot = polygon.points.filter((p) => p.plot === plot)
                 if (pointsForThisPlot.length >= 3) {
                     drawSinglePolygon(g, pointsForThisPlot, xScale, yScale, polygon.color, polygon.name)
@@ -374,7 +376,7 @@ export default function Home() {
         if (svgBRef.current) {
             drawPolygon(svgBRef, "B")
         }
-    }, [polygonPoints, isDrawingPolygon, newPolygonColor, polygons, countPointsInPolygon])
+    }, [polygonPoints, isDrawingPolygon, newPolygonColor, polygons])
 
     // 事件監聽器
     useEffect(() => {
@@ -412,6 +414,20 @@ export default function Home() {
         }
     }, [isDrawingPolygon])
 
+    const handleLegendClick = useCallback((name: string) => {
+        setPolygons((prev) => {
+            return prev.map((polygon) => {
+                if (polygon.name === name) {
+                    return {
+                        ...polygon,
+                        visible: !polygon.visible,
+                    }
+                }
+                return polygon
+            })
+        })
+    }, [])
+
     const handleSavePolygon = useCallback(() => {
         if (polygonPoints.length >= 3 && newPolygonName.trim()) {
             // 儲存多邊形
@@ -422,6 +438,7 @@ export default function Home() {
                     points: [...polygonPoints, { ...polygonPoints[0] }],
                     color: newPolygonColor,
                     name: newPolygonName,
+                    visible: true,
                 },
             ])
             // 儲存到 localStorage
@@ -458,14 +475,26 @@ export default function Home() {
                         <div className="space-y-2">
                             {polygons
                                 .filter((polygon) => polygon.points.some((point) => point.plot === "A"))
-                                .map((polygon, index) => (
-                                    <div key={index} className="flex items-center gap-2">
+                                .map((polygon) => (
+                                    <div
+                                        key={polygon.name}
+                                        className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-100"
+                                        onClick={() => handleLegendClick(polygon.name)}
+                                    >
                                         <div
                                             className="h-3 w-3 rounded-full"
-                                            style={{ backgroundColor: polygon.color }}
+                                            style={{
+                                                backgroundColor: polygon.color,
+                                                opacity: polygon.visible ? 1 : 0.3,
+                                            }}
                                         />
                                         <div className="flex flex-col">
-                                            <span className="text-sm font-medium">{polygon.name}</span>
+                                            <span
+                                                className="text-sm font-medium"
+                                                style={{ opacity: polygon.visible ? 1 : 0.3 }}
+                                            >
+                                                {polygon.name}
+                                            </span>
                                             <span className="text-xs text-gray-600">
                                                 {countPointsInPolygon(polygon.points, "A")} cells
                                             </span>
@@ -491,14 +520,26 @@ export default function Home() {
                         <div className="space-y-2">
                             {polygons
                                 .filter((polygon) => polygon.points.some((point) => point.plot === "B"))
-                                .map((polygon, index) => (
-                                    <div key={index} className="flex items-center gap-2">
+                                .map((polygon) => (
+                                    <div
+                                        key={polygon.name}
+                                        className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-100"
+                                        onClick={() => handleLegendClick(polygon.name)}
+                                    >
                                         <div
                                             className="h-3 w-3 rounded-full"
-                                            style={{ backgroundColor: polygon.color }}
+                                            style={{
+                                                backgroundColor: polygon.color,
+                                                opacity: polygon.visible ? 1 : 0.3,
+                                            }}
                                         />
                                         <div className="flex flex-col">
-                                            <span className="text-sm font-medium">{polygon.name}</span>
+                                            <span
+                                                className="text-sm font-medium"
+                                                style={{ opacity: polygon.visible ? 1 : 0.3 }}
+                                            >
+                                                {polygon.name}
+                                            </span>
                                             <span className="text-xs text-gray-600">
                                                 {countPointsInPolygon(polygon.points, "B")} cells
                                             </span>
