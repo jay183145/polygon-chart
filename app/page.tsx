@@ -39,6 +39,7 @@ export default function Home() {
     const [nameError, setNameError] = useState("")
     const [selectedPolygon, setSelectedPolygon] = useState("")
     const [dyedGroups, setDyedGroups] = useState<{ [key: string]: boolean }>({})
+    const [isDyeing, setIsDyeing] = useState(false)
 
     const handleClick = useCallback(
         (e: MouseEvent, plot: "A" | "B") => {
@@ -505,43 +506,49 @@ export default function Home() {
         const polygon = polygons.find((p) => p.name === selectedPolygon)
         if (!polygon) return
 
-        // 更新點的顏色和分組
-        setPoints((prev) => {
-            return prev.map((point) => {
+        setIsDyeing(true) // 開始染色時設置 loading 狀態
+
+        // 使用 setTimeout 來模擬染色過程，讓用戶可以看到 loading 效果
+        setTimeout(() => {
+            // 更新點的顏色和分組
+            setPoints((prev) => {
                 // 檢查點是否在多邊形內
-                const isInPolygonA =
-                    polygon.points.some((p) => p.plot === "A") &&
-                    isPointInPolygon(
-                        [point.a[0], point.a[1]],
-                        polygon.points.filter((p) => p.plot === "A").map((p) => [p.x, p.y]),
-                    )
-                const isInPolygonB =
-                    polygon.points.some((p) => p.plot === "B") &&
-                    isPointInPolygon(
-                        [point.b[0], point.b[1]],
-                        polygon.points.filter((p) => p.plot === "B").map((p) => [p.x, p.y]),
-                    )
+                return prev.map((point) => {
+                    const isInPolygonA =
+                        polygon.points.some((p) => p.plot === "A") &&
+                        isPointInPolygon(
+                            [point.a[0], point.a[1]],
+                            polygon.points.filter((p) => p.plot === "A").map((p) => [p.x, p.y]),
+                        )
+                    const isInPolygonB =
+                        polygon.points.some((p) => p.plot === "B") &&
+                        isPointInPolygon(
+                            [point.b[0], point.b[1]],
+                            polygon.points.filter((p) => p.plot === "B").map((p) => [p.x, p.y]),
+                        )
 
-                if (isInPolygonA || isInPolygonB) {
-                    return {
-                        ...point,
-                        color: polygon.color,
-                        group: polygon.name,
+                    if (isInPolygonA || isInPolygonB) {
+                        return {
+                            ...point,
+                            color: polygon.color,
+                            group: polygon.name,
+                        }
                     }
-                }
-                return point
+                    return point
+                })
             })
-        })
 
-        // 初始化該組的顯示狀態
-        setDyedGroups((prev) => ({
-            ...prev,
-            [polygon.name]: true,
-        }))
+            // 初始化該組的顯示狀態
+            setDyedGroups((prev) => ({
+                ...prev,
+                [polygon.name]: true,
+            }))
 
-        // 移除多邊形
-        setPolygons((prev) => prev.filter((p) => p.name !== selectedPolygon))
-        setSelectedPolygon("")
+            // 移除多邊形
+            setPolygons((prev) => prev.filter((p) => p.name !== selectedPolygon))
+            setSelectedPolygon("")
+            setIsDyeing(false) // 染色完成後清除 loading 狀態
+        }, 500) // 500ms 的延遲，讓用戶可以看到 loading 效果
     }, [selectedPolygon, polygons, isPointInPolygon])
 
     const handleToggleGroup = useCallback((groupName: string) => {
@@ -596,12 +603,21 @@ export default function Home() {
                         </div>
                         <button
                             onClick={handleDyeCells}
-                            disabled={!selectedPolygon}
+                            disabled={!selectedPolygon || isDyeing}
                             className={`rounded-md px-3 py-2 text-white ${
-                                selectedPolygon ? "bg-blue-500 hover:bg-blue-600" : "cursor-not-allowed bg-gray-400"
+                                selectedPolygon && !isDyeing
+                                    ? "bg-blue-500 hover:bg-blue-600"
+                                    : "cursor-not-allowed bg-gray-400"
                             }`}
                         >
-                            Dye the cells
+                            {isDyeing ? (
+                                <div className="flex items-center gap-2">
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                                    <span>Dyeing...</span>
+                                </div>
+                            ) : (
+                                "Dye the cells"
+                            )}
                         </button>
                     </div>
                 </div>
