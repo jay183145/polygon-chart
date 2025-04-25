@@ -30,6 +30,7 @@ export default function Home() {
     const [newPolygonName, setNewPolygonName] = useState("")
     const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([])
     const [nameError, setNameError] = useState("")
+    const [selectedPolygon, setSelectedPolygon] = useState("")
 
     const handleClick = useCallback(
         (e: MouseEvent, plot: "A" | "B") => {
@@ -468,14 +469,67 @@ export default function Home() {
         }
     }, [polygonPoints, newPolygonColor, newPolygonName, polygons])
 
+    const handleColorChange = useCallback(
+        (color: string) => {
+            setPolygons((prev) => {
+                return prev.map((polygon) => {
+                    if (polygon.name === selectedPolygon) {
+                        return {
+                            ...polygon,
+                            color,
+                        }
+                    }
+                    return polygon
+                })
+            })
+        },
+        [selectedPolygon],
+    )
+
     return (
         <div className="flex flex-col items-center gap-8 p-4">
-            <Button
-                onClick={handlePolygonButtonClick}
-                className={isDrawingPolygon ? "bg-red-500 hover:bg-red-600" : ""}
-            >
-                {isDrawingPolygon ? "Cancel" : "Click to Draw"}
-            </Button>
+            <div className="flex w-full justify-between px-32">
+                <div className="text-2xl font-bold">Kyle's Plot</div>
+                <Button
+                    onClick={handlePolygonButtonClick}
+                    className={isDrawingPolygon ? "bg-red-500 hover:bg-red-600" : ""}
+                >
+                    {isDrawingPolygon ? "Cancel" : "Click to Draw"}
+                </Button>
+                <div className="flex items-center gap-2">
+                    <select
+                        value={selectedPolygon}
+                        onChange={(e) => setSelectedPolygon(e.target.value)}
+                        className="rounded-md border border-gray-300 px-3 py-2"
+                    >
+                        <option value="">Select a polygon</option>
+                        {polygons.map((polygon) => (
+                            <option key={polygon.name} value={polygon.name}>
+                                {polygon.name}
+                            </option>
+                        ))}
+                    </select>
+                    <div className="flex items-center gap-2">
+                        <div className="h-10 w-10 rounded-md border border-gray-300 bg-white p-1">
+                            <input
+                                type="color"
+                                value={polygons.find((p) => p.name === selectedPolygon)?.color || "#FF0000"}
+                                onChange={(e) => handleColorChange(e.target.value)}
+                                className="h-full w-full"
+                            />
+                        </div>
+                        <button
+                            disabled={!selectedPolygon}
+                            className={`rounded-md px-3 py-2 text-white ${
+                                selectedPolygon ? "bg-blue-500 hover:bg-blue-600" : "cursor-not-allowed bg-gray-400"
+                            }`}
+                        >
+                            Dye the cells
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div className="flex gap-8">
                 {/* Plot A 和其圖例 */}
                 <div className="flex items-start gap-4">
