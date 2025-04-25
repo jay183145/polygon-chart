@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import * as d3 from "d3"
 import { Button } from "@/components/ui/button"
-import { savePolygonData, loadPolygonData, clearPolygonData } from "@/utils/storage"
+import { saveToLocalStorage, loadFromLocalStorage, deleteFromLocalStorage, getAllSaves } from "@/utils/storage"
+import { Point } from "@/types"
 
 interface PolygonPoint {
     x: number
@@ -16,13 +17,6 @@ interface Polygon {
     color: string
     name: string
     visible: boolean
-}
-
-interface Point {
-    a: [number, number] // Plot A 的座標
-    b: [number, number] // Plot B 的座標
-    color?: string // 點的顏色
-    group?: string // 點所屬的染色組
 }
 
 export default function Home() {
@@ -40,6 +34,12 @@ export default function Home() {
     const [selectedPolygon, setSelectedPolygon] = useState("")
     const [dyedGroups, setDyedGroups] = useState<{ [key: string]: boolean }>({})
     const [isDyeing, setIsDyeing] = useState(false)
+    const [showSaveDialog, setShowSaveDialog] = useState(false)
+    const [showLoadDialog, setShowLoadDialog] = useState(false)
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+    const [saveName, setSaveName] = useState("")
+    const [saves, setSaves] = useState<{ name: string; timestamp: number }[]>([])
+    const [selectedSave, setSelectedSave] = useState("")
 
     const handleClick = useCallback(
         (e: MouseEvent, plot: "A" | "B") => {
@@ -466,12 +466,6 @@ export default function Home() {
                     visible: true,
                 },
             ])
-            // 儲存到 localStorage
-            savePolygonData({
-                tagName: newPolygonName,
-                color: newPolygonColor,
-                polygon: polygonPoints,
-            })
 
             // 重置狀態
             setShowPolygonDialog(false)
@@ -569,10 +563,64 @@ export default function Home() {
         return Array.from(groups)
     }, [points])
 
+    // 獲取所有保存記錄
+    useEffect(() => {
+        const allSaves = getAllSaves()
+        setSaves(allSaves.map((save) => ({ name: save.name, timestamp: save.timestamp })))
+    }, [])
+
+    // 保存當前狀態到 localStorage
+    const handleSave = () => {
+        if (!saveName.trim()) return
+
+        const data = {
+            points,
+            polygons,
+            dyedGroups,
+        }
+        if (saveToLocalStorage(saveName, data)) {
+            setShowSaveDialog(true)
+            setSaveName("")
+            // 更新保存列表
+            const allSaves = getAllSaves()
+            setSaves(allSaves.map((save) => ({ name: save.name, timestamp: save.timestamp })))
+            setTimeout(() => setShowSaveDialog(false), 4000)
+        }
+    }
+
+    // 從 localStorage 加載數據
+    const handleLoad = () => {
+        if (!selectedSave) return
+
+        const data = loadFromLocalStorage(selectedSave)
+        if (data) {
+            setPoints(data.points)
+            setPolygons(data.polygons)
+            setDyedGroups(data.dyedGroups)
+            setShowLoadDialog(true)
+            setTimeout(() => setShowLoadDialog(false), 4000)
+        }
+    }
+
+    // 刪除 localStorage 中的數據
+    const handleDelete = () => {
+        if (!selectedSave) return
+
+        if (deleteFromLocalStorage(selectedSave)) {
+            setShowDeleteDialog(true)
+            // 更新保存列表
+            const allSaves = getAllSaves()
+            setSaves(allSaves.map((save) => ({ name: save.name, timestamp: save.timestamp })))
+            setSelectedSave("")
+            setTimeout(() => setShowDeleteDialog(false), 4000)
+        }
+    }
+
     return (
         <div className="flex flex-col items-center gap-8 p-4">
             <div className="flex w-full justify-between px-32">
                 <div className="text-2xl font-bold">Kyle's Plot</div>
+
                 <Button
                     onClick={handlePolygonButtonClick}
                     className={isDrawingPolygon ? "bg-red-500 hover:bg-red-600" : ""}
@@ -708,11 +756,7 @@ export default function Home() {
                     </div>
                 </div>
             </div>
-            {clickedPoint && (
-                <div className="mb-4 rounded bg-gray-100 p-2">
-                    Clicked at Plot {clickedPoint.plot}: X: {clickedPoint.x.toFixed(2)}, Y: {clickedPoint.y.toFixed(2)}
-                </div>
-            )}
+
             {showPolygonDialog && (
                 <div className="bg-opacity-50 fixed inset-0 flex items-center justify-center bg-black">
                     <div className="rounded-lg bg-white p-6">
@@ -764,6 +808,70 @@ export default function Home() {
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+            <div className="flex w-full items-center justify-between px-24">
+                <div className="flex-1">
+                    {clickedPoint && (
+                        <div className="inline-flex rounded bg-gray-100 px-3 py-1.5">
+                            Clicked at Plot {clickedPoint.plot}: X: {clickedPoint.x.toFixed(2)}, Y:{" "}
+                            {clickedPoint.y.toFixed(2)}
+                        </div>
+                    )}
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="text"
+                            value={saveName}
+                            onChange={(e) => setSaveName(e.target.value)}
+                            placeholder="Enter save name"
+                            className="rounded border px-2 py-1"
+                        />
+                        <Button
+                            onClick={handleSave}
+                            className="bg-green-500 hover:bg-green-600"
+                            disabled={!saveName.trim()}
+                        >
+                            Save
+                        </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <select
+                            value={selectedSave}
+                            onChange={(e) => setSelectedSave(e.target.value)}
+                            className="rounded border px-2 py-1"
+                        >
+                            <option value="">Select a save</option>
+                            {saves.map((save) => (
+                                <option key={save.name} value={save.name}>
+                                    {save.name} ({new Date(save.timestamp).toLocaleString()})
+                                </option>
+                            ))}
+                        </select>
+                        <Button onClick={handleLoad} className="bg-blue-500 hover:bg-blue-600" disabled={!selectedSave}>
+                            Load
+                        </Button>
+                        <Button onClick={handleDelete} className="bg-red-500 hover:bg-red-600" disabled={!selectedSave}>
+                            Delete
+                        </Button>
+                    </div>
+                </div>
+            </div>
+
+            {showSaveDialog && (
+                <div className="fixed right-2 bottom-2 rounded bg-green-500 px-4 py-2 text-white">
+                    Data saved successfully!
+                </div>
+            )}
+            {showLoadDialog && (
+                <div className="fixed right-2 bottom-2 rounded bg-blue-500 px-4 py-2 text-white">
+                    Data loaded successfully!
+                </div>
+            )}
+            {showDeleteDialog && (
+                <div className="fixed right-2 bottom-2 rounded bg-red-500 px-4 py-2 text-white">
+                    Data deleted successfully!
                 </div>
             )}
         </div>
