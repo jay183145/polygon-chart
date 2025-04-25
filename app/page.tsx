@@ -102,7 +102,7 @@ export default function Home() {
                 })
             }
         },
-        [isDrawingPolygon, newPolygonColor, newPolygonName],
+        [isDrawingPolygon],
     )
 
     // 初始化數據
@@ -399,7 +399,7 @@ export default function Home() {
         if (svgBRef.current) {
             drawPolygon(svgBRef, "B")
         }
-    }, [polygonPoints, isDrawingPolygon, newPolygonColor, polygons])
+    }, [countPointsInPolygon, polygonPoints, isDrawingPolygon, newPolygonColor, polygons])
 
     // 事件監聽器
     useEffect(() => {
@@ -438,20 +438,6 @@ export default function Home() {
             setIsDrawingPolygon(true)
         }
     }, [isDrawingPolygon])
-
-    const handleLegendClick = useCallback((name: string) => {
-        setPolygons((prev) => {
-            return prev.map((polygon) => {
-                if (polygon.name === name) {
-                    return {
-                        ...polygon,
-                        visible: !polygon.visible,
-                    }
-                }
-                return polygon
-            })
-        })
-    }, [])
 
     const handleSavePolygon = useCallback(() => {
         if (polygonPoints.length >= 3 && newPolygonName.trim()) {
@@ -636,7 +622,7 @@ export default function Home() {
     return (
         <div className="flex flex-col items-center gap-8 p-4">
             <div className="flex w-full justify-between px-32">
-                <div className="text-2xl font-bold">Kyle's Plot</div>
+                <div className="text-2xl font-bold">藍天駿的圖表</div>
 
                 <Button
                     onClick={handlePolygonButtonClick}
@@ -650,7 +636,7 @@ export default function Home() {
                         onChange={(e) => setSelectedPolygon(e.target.value)}
                         className="rounded-md border border-gray-300 px-3 py-2"
                     >
-                        <option value="">Select a polygon</option>
+                        <option value="default">Select a polygon</option>
                         {polygons.map((polygon) => (
                             <option key={polygon.name} value={polygon.name}>
                                 {polygon.name}
