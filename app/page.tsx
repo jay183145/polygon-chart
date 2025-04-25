@@ -29,6 +29,7 @@ export default function Home() {
     const [newPolygonColor, setNewPolygonColor] = useState("#FF0000")
     const [newPolygonName, setNewPolygonName] = useState("")
     const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([])
+    const [nameError, setNameError] = useState("")
 
     const handleClick = useCallback(
         (e: MouseEvent, plot: "A" | "B") => {
@@ -430,6 +431,13 @@ export default function Home() {
 
     const handleSavePolygon = useCallback(() => {
         if (polygonPoints.length >= 3 && newPolygonName.trim()) {
+            // 檢查名稱是否重複
+            const isNameDuplicate = polygons.some((polygon) => polygon.name === newPolygonName.trim())
+            if (isNameDuplicate) {
+                setNameError("This name is already in used")
+                return
+            }
+
             // 儲存多邊形
             setPolygons((prev) => [
                 ...prev,
@@ -454,8 +462,9 @@ export default function Home() {
             setNewPolygonColor("#FF0000")
             setPolygonPoints([])
             setIsDrawingPolygon(false)
+            setNameError("")
         }
-    }, [polygonPoints, newPolygonColor, newPolygonName])
+    }, [polygonPoints, newPolygonColor, newPolygonName, polygons])
 
     return (
         <div className="flex flex-col items-center gap-8 p-4">
@@ -567,10 +576,16 @@ export default function Home() {
                             <input
                                 type="text"
                                 value={newPolygonName}
-                                onChange={(e) => setNewPolygonName(e.target.value)}
-                                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                                onChange={(e) => {
+                                    setNewPolygonName(e.target.value)
+                                    setNameError("")
+                                }}
+                                className={`mt-1 block w-full rounded-md border px-3 py-2 ${
+                                    nameError ? "border-red-500" : "border-gray-300"
+                                }`}
                                 placeholder="Enter polygon name"
                             />
+                            {nameError && <p className="mt-1 text-sm text-red-500">{nameError}</p>}
                         </div>
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700">Color</label>
@@ -586,6 +601,7 @@ export default function Home() {
                                 onClick={() => {
                                     setShowPolygonDialog(false)
                                     setNewPolygonName("")
+                                    setNameError("")
                                 }}
                                 className="rounded bg-gray-500 px-4 py-2 text-white"
                             >
