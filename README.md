@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Polygon Chart
 
-## Getting Started
+這是一個使用 Next.js 開發的圖表應用程式，使用 Docker 進行環境封裝和部署。
 
-First, run the development server:
+## 系統需求
+
+- Docker Desktop
+- Git
+
+## 專案設置
+
+1. 克隆專案
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/jay183145/polygon-chart.git
+cd polygon-chart
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. 使用 Docker 構建映像
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+docker build -t polygon-chart .
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+3. 運行容器
 
-## Learn More
+```bash
+docker run -p 3000:3000 polygon-chart
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 開發環境設置
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+如果你想要在本地開發環境中運行專案：
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. 確保已安裝 Node.js (v20.16.0 或更高版本) 和 pnpm
 
-## Deploy on Vercel
+2. 安裝依賴
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+pnpm install
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. 啟動開發伺服器
+
+```bash
+pnpm dev
+```
+
+4. 在瀏覽器中訪問 http://localhost:3000
+
+## 專案結構
+
+```
+polygon-chart/
+├── .next/              # Next.js 構建輸出
+├── public/             # 靜態文件
+├── app/                # Next.js 應用路由
+├── components/         # React 組件
+├── types/              # 型別
+├── utils/              # 一些簡易的 functions
+├── package.json        # 專案依賴
+├── pnpm-lock.yaml      # 依賴鎖定文件
+├── Dockerfile          # Docker 配置
+└── README.md           # 專案文檔
+```
+
+## Docker 說明
+
+專案使用多階段構建來優化 Docker 映像大小：
+
+1. `base` 階段：設置基礎 Node.js 環境
+2. `deps` 階段：安裝依賴
+3. `builder` 階段：構建應用
+4. 最終階段：運行應用
+
+## 常見問題
+
+1. 如果遇到端口衝突，可以修改 Docker 運行命令中的端口映射：
+
+```bash
+docker run -p [your-port]:3000 polygon-chart
+```
+
+2. 如果需要清理 Docker 資源：
+
+```bash
+docker system prune -a --volumes
+```
+
+## 授權
+
+[MIT License](LICENSE)
