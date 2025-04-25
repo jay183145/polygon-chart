@@ -691,16 +691,16 @@ export default function Home() {
                                 return (
                                     <div
                                         key={groupName}
-                                        className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-100"
+                                        className="flex w-[100px] cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-100"
                                         onClick={() => handleToggleGroup(groupName)}
                                     >
                                         <div
-                                            className="h-3 w-3 rounded-full"
+                                            className="h-3 w-3 shrink-0 rounded-full"
                                             style={{ backgroundColor: color, opacity: dyedGroups[groupName] ? 1 : 0.3 }}
                                         />
-                                        <div className="flex flex-col">
+                                        <div className="flex min-w-0 flex-col">
                                             <span
-                                                className="text-sm font-medium"
+                                                className="truncate text-sm font-medium"
                                                 style={{ opacity: dyedGroups[groupName] ? 1 : 0.3 }}
                                             >
                                                 {groupName}
@@ -733,16 +733,16 @@ export default function Home() {
                                 return (
                                     <div
                                         key={groupName}
-                                        className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-100"
+                                        className="flex w-[100px] cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-100"
                                         onClick={() => handleToggleGroup(groupName)}
                                     >
                                         <div
-                                            className="h-3 w-3 rounded-full"
+                                            className="h-3 w-3 shrink-0 rounded-full"
                                             style={{ backgroundColor: color, opacity: dyedGroups[groupName] ? 1 : 0.3 }}
                                         />
-                                        <div className="flex flex-col">
+                                        <div className="flex min-w-0 flex-col">
                                             <span
-                                                className="text-sm font-medium"
+                                                className="truncate text-sm font-medium"
                                                 style={{ opacity: dyedGroups[groupName] ? 1 : 0.3 }}
                                             >
                                                 {groupName}
