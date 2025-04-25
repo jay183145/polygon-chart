@@ -980,22 +980,22 @@ export default function Home() {
             )}
 
             {showSaveDialog && (
-                <div className="fixed right-2 bottom-2 rounded bg-green-500 px-4 py-2 text-white">
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 rounded bg-green-500 px-4 py-2 text-white">
                     Data saved successfully!
                 </div>
             )}
             {showLoadDialog && (
-                <div className="fixed right-2 bottom-2 rounded bg-blue-500 px-4 py-2 text-white">
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 rounded bg-blue-500 px-4 py-2 text-white">
                     Data loaded successfully!
                 </div>
             )}
             {showDeleteDialog && (
-                <div className="fixed right-2 bottom-2 rounded bg-red-500 px-4 py-2 text-white">
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 rounded bg-red-500 px-4 py-2 text-white">
                     Data deleted successfully!
                 </div>
             )}
             {showClearDialog && (
-                <div className="fixed right-2 bottom-2 rounded bg-yellow-500 px-4 py-2 text-white">
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 rounded bg-yellow-500 px-4 py-2 text-white">
                     Current data cleared successfully!
                 </div>
             )}
