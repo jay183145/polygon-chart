@@ -44,6 +44,7 @@ export default function Home() {
     const [saveName, setSaveName] = useState("")
     const [saves, setSaves] = useState<{ name: string; timestamp: number }[]>([])
     const [selectedSave, setSelectedSave] = useState("")
+    const [originalPoints, setOriginalPoints] = useState<Point[]>([])
 
     const handleClick = useCallback(
         (e: MouseEvent, plot: "A" | "B") => {
@@ -122,7 +123,9 @@ export default function Home() {
             return null
         }).then((data) => {
             // 過濾掉所有 null 值，並設置到 state 中
-            setPoints(data.filter(Boolean) as Point[])
+            const validData = data.filter(Boolean) as Point[]
+            setPoints(validData)
+            setOriginalPoints(validData)
         })
     }, [])
 
@@ -622,7 +625,7 @@ export default function Home() {
 
     // 清理當前資料
     const handleClearCurrent = () => {
-        setPoints([])
+        setPoints(originalPoints)
         setPolygons([])
         setDyedGroups({})
         setClickedPoint(null)
