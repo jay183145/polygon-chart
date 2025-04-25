@@ -409,6 +409,8 @@ export default function Home() {
 
     const handlePolygonButtonClick = useCallback(() => {
         if (isDrawingPolygon) {
+            // 清除當前繪製的多邊形
+            setPolygonPoints([])
             setIsDrawingPolygon(false)
         } else {
             setIsDrawingPolygon(true)
@@ -468,8 +470,11 @@ export default function Home() {
 
     return (
         <div className="flex flex-col items-center gap-8 p-4">
-            <Button onClick={handlePolygonButtonClick} className={isDrawingPolygon ? "bg-red-500" : ""}>
-                {isDrawingPolygon ? "Drawing..." : "Click to Draw"}
+            <Button
+                onClick={handlePolygonButtonClick}
+                className={isDrawingPolygon ? "bg-red-500 hover:bg-red-600" : ""}
+            >
+                {isDrawingPolygon ? "Cancel" : "Click to Draw"}
             </Button>
             <div className="flex gap-8">
                 {/* Plot A 和其圖例 */}
