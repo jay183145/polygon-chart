@@ -38,6 +38,9 @@ export default function Home() {
     const [showLoadDialog, setShowLoadDialog] = useState(false)
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [showClearDialog, setShowClearDialog] = useState(false)
+    const [showSaveModal, setShowSaveModal] = useState(false)
+    const [showLoadModal, setShowLoadModal] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [saveName, setSaveName] = useState("")
     const [saves, setSaves] = useState<{ name: string; timestamp: number }[]>([])
     const [selectedSave, setSelectedSave] = useState("")
@@ -834,44 +837,144 @@ export default function Home() {
                     <Button onClick={handleClearCurrent} className="bg-yellow-500 hover:bg-yellow-600">
                         Clear
                     </Button>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="text"
-                            value={saveName}
-                            onChange={(e) => setSaveName(e.target.value)}
-                            placeholder="Enter save name"
-                            className="rounded border px-2 py-1"
-                        />
-                        <Button
-                            onClick={handleSave}
-                            className="bg-green-500 hover:bg-green-600"
-                            disabled={!saveName.trim()}
-                        >
-                            Save
-                        </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <select
-                            value={selectedSave}
-                            onChange={(e) => setSelectedSave(e.target.value)}
-                            className="w-48 rounded border px-3 py-2"
-                        >
-                            <option value="">Select a save</option>
-                            {saves.map((save) => (
-                                <option className="px-2 py-1" key={save.name} value={save.name}>
-                                    {save.name} ({new Date(save.timestamp).toLocaleString()})
-                                </option>
-                            ))}
-                        </select>
-                        <Button onClick={handleLoad} className="bg-blue-500 hover:bg-blue-600" disabled={!selectedSave}>
-                            Load
-                        </Button>
-                        <Button onClick={handleDelete} className="bg-red-500 hover:bg-red-600" disabled={!selectedSave}>
-                            Delete
-                        </Button>
-                    </div>
+                    <Button onClick={() => setShowSaveModal(true)} className="bg-green-500 hover:bg-green-600">
+                        Save
+                    </Button>
+                    <Button onClick={() => setShowLoadModal(true)} className="bg-blue-500 hover:bg-blue-600">
+                        Load
+                    </Button>
+                    <Button onClick={() => setShowDeleteModal(true)} className="bg-red-500 hover:bg-red-600">
+                        Delete
+                    </Button>
                 </div>
             </div>
+
+            {/* Save Modal */}
+            {showSaveModal && (
+                <div className="bg-opacity-50 fixed inset-0 flex items-center justify-center bg-black">
+                    <div className="rounded-lg bg-white p-6">
+                        <h2 className="mb-4 text-xl font-bold">Save Current State</h2>
+                        <div className="mb-4">
+                            <input
+                                type="text"
+                                value={saveName}
+                                onChange={(e) => setSaveName(e.target.value)}
+                                placeholder="Enter save name"
+                                className="w-full rounded border px-3 py-2"
+                            />
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                onClick={() => {
+                                    setShowSaveModal(false)
+                                    setSaveName("")
+                                }}
+                                className="bg-gray-500 hover:bg-gray-600"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    handleSave()
+                                    setShowSaveModal(false)
+                                }}
+                                className="bg-green-500 hover:bg-green-600"
+                                disabled={!saveName.trim()}
+                            >
+                                Save
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Load Modal */}
+            {showLoadModal && (
+                <div className="bg-opacity-50 fixed inset-0 flex items-center justify-center bg-black">
+                    <div className="rounded-lg bg-white p-6">
+                        <h2 className="mb-4 text-xl font-bold">Load Saved State</h2>
+                        <div className="mb-4">
+                            <select
+                                value={selectedSave}
+                                onChange={(e) => setSelectedSave(e.target.value)}
+                                className="w-full rounded border px-3 py-2"
+                            >
+                                <option value="">Select a save</option>
+                                {saves.map((save) => (
+                                    <option key={save.name} value={save.name}>
+                                        {save.name} ({new Date(save.timestamp).toLocaleString()})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                onClick={() => {
+                                    setShowLoadModal(false)
+                                    setSelectedSave("")
+                                }}
+                                className="bg-gray-500 hover:bg-gray-600"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    handleLoad()
+                                    setShowLoadModal(false)
+                                }}
+                                className="bg-blue-500 hover:bg-blue-600"
+                                disabled={!selectedSave}
+                            >
+                                Load
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Modal */}
+            {showDeleteModal && (
+                <div className="bg-opacity-50 fixed inset-0 flex items-center justify-center bg-black">
+                    <div className="rounded-lg bg-white p-6">
+                        <h2 className="mb-4 text-xl font-bold">Delete Saved State</h2>
+                        <div className="mb-4">
+                            <select
+                                value={selectedSave}
+                                onChange={(e) => setSelectedSave(e.target.value)}
+                                className="w-full rounded border px-3 py-2"
+                            >
+                                <option value="">Select a save to delete</option>
+                                {saves.map((save) => (
+                                    <option key={save.name} value={save.name}>
+                                        {save.name} ({new Date(save.timestamp).toLocaleString()})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <Button
+                                onClick={() => {
+                                    setShowDeleteModal(false)
+                                    setSelectedSave("")
+                                }}
+                                className="bg-gray-500 hover:bg-gray-600"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={() => {
+                                    handleDelete()
+                                    setShowDeleteModal(false)
+                                }}
+                                className="bg-red-500 hover:bg-red-600"
+                                disabled={!selectedSave}
+                            >
+                                Delete
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showSaveDialog && (
                 <div className="fixed right-2 bottom-2 rounded bg-green-500 px-4 py-2 text-white">
