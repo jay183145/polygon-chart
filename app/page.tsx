@@ -37,6 +37,7 @@ export default function Home() {
     const [showSaveDialog, setShowSaveDialog] = useState(false)
     const [showLoadDialog, setShowLoadDialog] = useState(false)
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+    const [showClearDialog, setShowClearDialog] = useState(false)
     const [saveName, setSaveName] = useState("")
     const [saves, setSaves] = useState<{ name: string; timestamp: number }[]>([])
     const [selectedSave, setSelectedSave] = useState("")
@@ -616,6 +617,16 @@ export default function Home() {
         }
     }
 
+    // 清理當前資料
+    const handleClearCurrent = () => {
+        setPoints([])
+        setPolygons([])
+        setDyedGroups({})
+        setClickedPoint(null)
+        setShowClearDialog(true)
+        setTimeout(() => setShowClearDialog(false), 4000)
+    }
+
     return (
         <div className="flex flex-col items-center gap-8 p-4">
             <div className="flex w-full justify-between px-32">
@@ -820,6 +831,9 @@ export default function Home() {
                     )}
                 </div>
                 <div className="flex items-center gap-4">
+                    <Button onClick={handleClearCurrent} className="bg-yellow-500 hover:bg-yellow-600">
+                        Clear
+                    </Button>
                     <div className="flex items-center gap-2">
                         <input
                             type="text"
@@ -840,11 +854,11 @@ export default function Home() {
                         <select
                             value={selectedSave}
                             onChange={(e) => setSelectedSave(e.target.value)}
-                            className="rounded border px-2 py-1"
+                            className="w-48 rounded border px-3 py-2"
                         >
                             <option value="">Select a save</option>
                             {saves.map((save) => (
-                                <option key={save.name} value={save.name}>
+                                <option className="px-2 py-1" key={save.name} value={save.name}>
                                     {save.name} ({new Date(save.timestamp).toLocaleString()})
                                 </option>
                             ))}
@@ -872,6 +886,11 @@ export default function Home() {
             {showDeleteDialog && (
                 <div className="fixed right-2 bottom-2 rounded bg-red-500 px-4 py-2 text-white">
                     Data deleted successfully!
+                </div>
+            )}
+            {showClearDialog && (
+                <div className="fixed right-2 bottom-2 rounded bg-yellow-500 px-4 py-2 text-white">
+                    Current data cleared successfully!
                 </div>
             )}
         </div>
