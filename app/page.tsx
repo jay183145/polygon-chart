@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useRef, useState, useCallback, useMemo } from "react"
 import * as d3 from "d3"
 import { Button } from "@/components/ui/button"
 import { savePolygonData, loadPolygonData, clearPolygonData } from "@/utils/storage"
@@ -18,10 +18,17 @@ interface Polygon {
     visible: boolean
 }
 
+interface Point {
+    a: [number, number] // Plot A 的座標
+    b: [number, number] // Plot B 的座標
+    color?: string // 點的顏色
+    group?: string // 點所屬的染色組
+}
+
 export default function Home() {
     const svgARef = useRef<SVGSVGElement | null>(null)
     const svgBRef = useRef<SVGSVGElement | null>(null)
-    const [points, setPoints] = useState<{ a: [number, number]; b: [number, number] }[]>([])
+    const [points, setPoints] = useState<Point[]>([])
     const [clickedPoint, setClickedPoint] = useState<{ x: number; y: number; plot: "A" | "B" } | null>(null)
     const [isDrawingPolygon, setIsDrawingPolygon] = useState(false)
     const [showPolygonDialog, setShowPolygonDialog] = useState(false)
@@ -31,6 +38,7 @@ export default function Home() {
     const [polygonPoints, setPolygonPoints] = useState<PolygonPoint[]>([])
     const [nameError, setNameError] = useState("")
     const [selectedPolygon, setSelectedPolygon] = useState("")
+    const [dyedGroups, setDyedGroups] = useState<{ [key: string]: boolean }>({})
 
     const handleClick = useCallback(
         (e: MouseEvent, plot: "A" | "B") => {
@@ -102,14 +110,14 @@ export default function Home() {
 
             // 確保所有數值都是有效的（不是 NaN）
             if (!isNaN(xA) && !isNaN(xB) && !isNaN(y)) {
-                // 返回一個物件，包含兩個座標點
+                // 同一個點在兩個圖表上的位置
                 return { a: [xA, y], b: [xB, y] }
             }
             // 如果有任何無效數值，返回 null
             return null
         }).then((data) => {
             // 過濾掉所有 null 值，並設置到 state 中
-            setPoints(data.filter(Boolean) as { a: [number, number]; b: [number, number] }[])
+            setPoints(data.filter(Boolean) as Point[])
         })
     }, [])
 
@@ -161,7 +169,7 @@ export default function Home() {
             xScale: d3.ScaleLinear<number, number>,
             labelX: string,
             labelY: string,
-            accessor: (d: { a: [number, number]; b: [number, number] }) => [number, number],
+            accessor: (d: Point) => [number, number],
         ) {
             // 選取 SVG 元素並清空其內容
             const svg = d3.select(svgRef.current)
@@ -206,7 +214,12 @@ export default function Home() {
                 .attr("cx", (d) => xScale(accessor(d)[0])) // 設定 X 座標
                 .attr("cy", (d) => yScale(accessor(d)[1])) // 設定 Y 座標
                 .attr("r", 1) // 設定圓的半徑
-                .attr("fill", "gray") // 設定填充顏色
+                .attr("fill", (d) => {
+                    if (!d.group || dyedGroups[d.group]) {
+                        return d.color || "gray"
+                    }
+                    return "gray"
+                }) // 設定填充顏色
         }
 
         // 如果 SVG A 存在，繪製第一個圖表（CD45-KrO vs SS INT LIN）
@@ -217,7 +230,7 @@ export default function Home() {
         if (svgBRef.current) {
             drawPlot(svgBRef, xScaleB, "CD19-PB", "SS INT LIN", (d) => d.b)
         }
-    }, [points])
+    }, [points, dyedGroups])
 
     // 計算點是否在多邊形內部
     const isPointInPolygon = useCallback((point: [number, number], polygon: [number, number][]) => {
@@ -486,6 +499,69 @@ export default function Home() {
         [selectedPolygon],
     )
 
+    const handleDyeCells = useCallback(() => {
+        if (!selectedPolygon) return
+
+        const polygon = polygons.find((p) => p.name === selectedPolygon)
+        if (!polygon) return
+
+        // 更新點的顏色和分組
+        setPoints((prev) => {
+            return prev.map((point) => {
+                // 檢查點是否在多邊形內
+                const isInPolygonA =
+                    polygon.points.some((p) => p.plot === "A") &&
+                    isPointInPolygon(
+                        [point.a[0], point.a[1]],
+                        polygon.points.filter((p) => p.plot === "A").map((p) => [p.x, p.y]),
+                    )
+                const isInPolygonB =
+                    polygon.points.some((p) => p.plot === "B") &&
+                    isPointInPolygon(
+                        [point.b[0], point.b[1]],
+                        polygon.points.filter((p) => p.plot === "B").map((p) => [p.x, p.y]),
+                    )
+
+                if (isInPolygonA || isInPolygonB) {
+                    return {
+                        ...point,
+                        color: polygon.color,
+                        group: polygon.name,
+                    }
+                }
+                return point
+            })
+        })
+
+        // 初始化該組的顯示狀態
+        setDyedGroups((prev) => ({
+            ...prev,
+            [polygon.name]: true,
+        }))
+
+        // 移除多邊形
+        setPolygons((prev) => prev.filter((p) => p.name !== selectedPolygon))
+        setSelectedPolygon("")
+    }, [selectedPolygon, polygons, isPointInPolygon])
+
+    const handleToggleGroup = useCallback((groupName: string) => {
+        setDyedGroups((prev) => ({
+            ...prev,
+            [groupName]: !prev[groupName],
+        }))
+    }, [])
+
+    // 收集所有已染色的組
+    const dyedGroupNames = useMemo(() => {
+        const groups = new Set<string>()
+        points.forEach((point) => {
+            if (point.group) {
+                groups.add(point.group)
+            }
+        })
+        return Array.from(groups)
+    }, [points])
+
     return (
         <div className="flex flex-col items-center gap-8 p-4">
             <div className="flex w-full justify-between px-32">
@@ -519,6 +595,7 @@ export default function Home() {
                             />
                         </div>
                         <button
+                            onClick={handleDyeCells}
                             disabled={!selectedPolygon}
                             className={`rounded-md px-3 py-2 text-white ${
                                 selectedPolygon ? "bg-blue-500 hover:bg-blue-600" : "cursor-not-allowed bg-gray-400"
@@ -541,36 +618,33 @@ export default function Home() {
                     <div className="w-32 rounded-lg border p-4">
                         <h3 className="mb-2 text-sm font-semibold">Plot A Legend</h3>
                         <div className="space-y-2">
-                            {polygons
-                                .filter((polygon) => polygon.points.some((point) => point.plot === "A"))
-                                .map((polygon) => (
+                            {dyedGroupNames.map((groupName) => {
+                                const groupPoints = points.filter((p) => p.group === groupName)
+                                const color = groupPoints[0]?.color || "gray"
+                                return (
                                     <div
-                                        key={polygon.name}
+                                        key={groupName}
                                         className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-100"
-                                        onClick={() => handleLegendClick(polygon.name)}
+                                        onClick={() => handleToggleGroup(groupName)}
                                     >
                                         <div
                                             className="h-3 w-3 rounded-full"
-                                            style={{
-                                                backgroundColor: polygon.color,
-                                                opacity: polygon.visible ? 1 : 0.3,
-                                            }}
+                                            style={{ backgroundColor: color, opacity: dyedGroups[groupName] ? 1 : 0.3 }}
                                         />
                                         <div className="flex flex-col">
                                             <span
                                                 className="text-sm font-medium"
-                                                style={{ opacity: polygon.visible ? 1 : 0.3 }}
+                                                style={{ opacity: dyedGroups[groupName] ? 1 : 0.3 }}
                                             >
-                                                {polygon.name}
+                                                {groupName}
                                             </span>
-                                            <span className="text-xs text-gray-600">
-                                                {countPointsInPolygon(polygon.points, "A")} cells
-                                            </span>
+                                            <span className="text-xs text-gray-600">{groupPoints.length} cells</span>
                                         </div>
                                     </div>
-                                ))}
-                            {!polygons.some((p) => p.points.some((point) => point.plot === "A")) && (
-                                <div className="text-xs text-gray-400 italic">No polygons yet</div>
+                                )
+                            })}
+                            {dyedGroupNames.length === 0 && (
+                                <div className="text-xs text-gray-400 italic">No dyed cells yet</div>
                             )}
                         </div>
                     </div>
@@ -586,36 +660,33 @@ export default function Home() {
                     <div className="w-32 rounded-lg border p-4">
                         <h3 className="mb-2 text-sm font-semibold">Plot B Legend</h3>
                         <div className="space-y-2">
-                            {polygons
-                                .filter((polygon) => polygon.points.some((point) => point.plot === "B"))
-                                .map((polygon) => (
+                            {dyedGroupNames.map((groupName) => {
+                                const groupPoints = points.filter((p) => p.group === groupName)
+                                const color = groupPoints[0]?.color || "gray"
+                                return (
                                     <div
-                                        key={polygon.name}
+                                        key={groupName}
                                         className="flex cursor-pointer items-center gap-2 rounded p-1 hover:bg-gray-100"
-                                        onClick={() => handleLegendClick(polygon.name)}
+                                        onClick={() => handleToggleGroup(groupName)}
                                     >
                                         <div
                                             className="h-3 w-3 rounded-full"
-                                            style={{
-                                                backgroundColor: polygon.color,
-                                                opacity: polygon.visible ? 1 : 0.3,
-                                            }}
+                                            style={{ backgroundColor: color, opacity: dyedGroups[groupName] ? 1 : 0.3 }}
                                         />
                                         <div className="flex flex-col">
                                             <span
                                                 className="text-sm font-medium"
-                                                style={{ opacity: polygon.visible ? 1 : 0.3 }}
+                                                style={{ opacity: dyedGroups[groupName] ? 1 : 0.3 }}
                                             >
-                                                {polygon.name}
+                                                {groupName}
                                             </span>
-                                            <span className="text-xs text-gray-600">
-                                                {countPointsInPolygon(polygon.points, "B")} cells
-                                            </span>
+                                            <span className="text-xs text-gray-600">{groupPoints.length} cells</span>
                                         </div>
                                     </div>
-                                ))}
-                            {!polygons.some((p) => p.points.some((point) => point.plot === "B")) && (
-                                <div className="text-xs text-gray-400 italic">No polygons yet</div>
+                                )
+                            })}
+                            {dyedGroupNames.length === 0 && (
+                                <div className="text-xs text-gray-400 italic">No dyed cells yet</div>
                             )}
                         </div>
                     </div>
