@@ -1,5 +1,7 @@
 # Polygon Chart
 
+已部屬至 [https://polygon-chart.vercel.app/](https://polygon-chart.vercel.app/)
+
 這是一個使用 Next.js 開發的圖表應用程式，使用 Docker 進行環境封裝和部署。
 
 ## 系統需求
